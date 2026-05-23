@@ -44,22 +44,20 @@ FissionANNO/
 
 ## Setup
 
+Prerequisites: `micromamba` (or `mamba`) on PATH; `curl`, `tar`, `sed`.
+
 ```bash
-# 1. Patch cigar source (lifton transitive dep; upstream packaging is broken)
-cd /tmp && curl -sL https://files.pythonhosted.org/packages/source/c/cigar/cigar-0.1.3.tar.gz | tar xz
-cd cigar-0.1.3 && sed -i '/^import ez_setup/d; /^ez_setup.use_setuptools/d' setup.py
-/data/c/jiaguosong/conda_envs/fissionanno/bin/pip install --no-build-isolation --no-deps .
-
-# 2. Create env (skips cigar; rest of pip section installs)
-CONDARC=/tmp/fa_condarc_dir/condarc \
-  micromamba env create -y --override-channels \
-    -c conda-forge -c bioconda \
-    -p /data/c/jiaguosong/conda_envs/fissionanno \
-    -f workflow/envs/fissionanno.yaml
-
-# 3. Activate
+git clone <repo> FissionANNO && cd FissionANNO
+bash setup_env.sh                                                # default prefix
+# or:
+ENV_PREFIX=/path/to/your/envs/fissionanno bash setup_env.sh      # custom prefix
 conda activate /data/c/jiaguosong/conda_envs/fissionanno
 ```
+
+`setup_env.sh` is end-to-end reproducible: it neutralizes a stale
+`~/.condarc`, builds the patched `cigar` wheel (lifton transitive dep
+with broken upstream packaging), and installs lifton + pytest in the
+right order. Tested from a clean state on 2026-05-23.
 
 The repo is a single conda env. BRAKER4 is invoked as an *external*
 Snakemake workflow at `/data/c/jiaguosong/BRAKER4/` via subprocess — it
