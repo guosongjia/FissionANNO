@@ -38,8 +38,32 @@ FissionANNO/
 ```
 
 ## Status
-- 2026-05-22: scaffold only. All `workflow/scripts/*.py` except `lifton_gff3_refine.py` are placeholders that exit 2.
-- L1 rules wired against in-tree refine script. L2/L3/merge rules wired but call stubs.
+- 2026-05-22: scaffold + L1 refine fixes + SOG/unmapped scripts implemented
+- 2026-05-23: conda env installed at `/data/c/jiaguosong/conda_envs/fissionanno` (899 MB)
+- L2/L3/merge: rule wiring done; python scripts are placeholders (exit 2)
+
+## Setup
+
+```bash
+# 1. Patch cigar source (lifton transitive dep; upstream packaging is broken)
+cd /tmp && curl -sL https://files.pythonhosted.org/packages/source/c/cigar/cigar-0.1.3.tar.gz | tar xz
+cd cigar-0.1.3 && sed -i '/^import ez_setup/d; /^ez_setup.use_setuptools/d' setup.py
+/data/c/jiaguosong/conda_envs/fissionanno/bin/pip install --no-build-isolation --no-deps .
+
+# 2. Create env (skips cigar; rest of pip section installs)
+CONDARC=/tmp/fa_condarc_dir/condarc \
+  micromamba env create -y --override-channels \
+    -c conda-forge -c bioconda \
+    -p /data/c/jiaguosong/conda_envs/fissionanno \
+    -f workflow/envs/fissionanno.yaml
+
+# 3. Activate
+conda activate /data/c/jiaguosong/conda_envs/fissionanno
+```
+
+The repo is a single conda env. BRAKER4 is invoked as an *external*
+Snakemake workflow at `/data/c/jiaguosong/BRAKER4/` via subprocess — it
+is **not** installed into this env.
 
 ## Next
 1. Run refine A1–A5 bug A/B test on 5 sample strains using existing `1.1_lifton_original_gff3` outputs.
