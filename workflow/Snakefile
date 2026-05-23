@@ -1,0 +1,42 @@
+"""
+FissionANNO — population-scale annotation for Schizosaccharomyces strains
+Three-layer pipeline: L1 lifton -> L2 miniprot (9-species) -> L3 BRAKER4 + UniRef50
+
+See CLAUDE.md for the full decision record.
+"""
+
+import os
+import pandas as pd
+
+configfile: "config/config.yaml"
+
+# ----- load manifest -----
+_manifest = pd.read_csv(config["manifest"], sep="\t", dtype=str).set_index("sample_name", drop=False)
+SAMPLES = list(_manifest.index)
+SAMPLE_FASTA  = _manifest["genome_fasta"].to_dict()
+SAMPLE_SPECIES = _manifest["species"].to_dict()
+
+OUTDIR = config["outdir"].rstrip("/")
+
+def s_results(sample, *parts):
+    return os.path.join(OUTDIR, "results", sample, *parts)
+
+# ----- include layer rules -----
+include: "rules/common.smk"
+include: "rules/l1_lifton.smk"
+include: "rules/l2_miniprot.smk"
+include: "rules/l3_braker4.smk"
+include: "rules/merge.smk"
+
+# ----- top-level targets -----
+rule all:
+    input:
+        expand(os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),
+               sample=SAMPLES),
+        os.path.join(OUTDIR, "unmapped_summary.tsv"),
+        os.path.join(OUTDIR, "versions.tsv"),
+
+rule l1_only:
+    input:
+        expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.refine.gff3"),
+               sample=SAMPLES),

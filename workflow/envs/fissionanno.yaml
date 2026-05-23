@@ -1,0 +1,40 @@
+name: fissionanno
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # core runtime
+  - python=3.11
+  - pip
+
+  # workflow engine
+  - snakemake-minimal>=7.32,<8        # v7: py3.11 OK; v8 forces newer numpy/pandas
+  - pulp                              # snakemake DAG solver
+
+  # L1 lifton transfer
+  - lifton=1.0.2
+  - liftoff                           # bundled by lifton runtime
+
+  # L2 protein-to-genome alignment
+  - miniprot
+
+  # L3 UniRef50 filter
+  - diamond
+
+  # GFF / sequence handling
+  - gffutils
+  - pyfaidx
+  - biopython
+  - pysam
+  - samtools
+
+  # tabular / interval analytics
+  - pandas<2.2
+  - numpy<2
+  - pyranges
+
+  # build tools used in pipeline
+  - pyyaml
+
+  # apptainer client (for invoking the external BRAKER4 workflow)
+  - apptainer

@@ -1,0 +1,8 @@
+# Per-strain manifest. Tab-separated. Header line required.
+# sample_name must be unique. genome_fasta must be absolute path.
+sample_name	genome_fasta	species
+DY47073	/data/c/jiaguosong/ngs_assembly/Spombe/10_select_final_assembly/final_assembly/DY47073.spades_careful.kat_filtered.MTremoved.1kbRemoved.cleaned.fasta	Schizosaccharomyces_pombe
+DY46687	/data/c/jiaguosong/ngs_assembly/Spombe/10_select_final_assembly/final_assembly/DY46687.spades_careful.kat_filtered.MTremoved.1kbRemoved.cleaned.fasta	Schizosaccharomyces_pombe
+DY44518-zxr	/data/c/jiaguosong/ngs_assembly/Spombe/10_select_final_assembly/final_assembly/DY44518-zxr.spades_careful.kat_filtered.MTremoved.1kbRemoved.cleaned.fasta	Schizosaccharomyces_pombe
+DY42495-zxr	/data/c/jiaguosong/ngs_assembly/Spombe/10_select_final_assembly/final_assembly/DY42495-zxr.spades.kat_filtered.MTremoved.1kbRemoved.cleaned.fasta	Schizosaccharomyces_pombe
+DY39827	/data/c/jiaguosong/ngs_assembly/Spombe/10_select_final_assembly/final_assembly/DY39827.spades_careful.kat_filtered.MTremoved.1kbRemoved.cleaned.fasta	Schizosaccharomyces_pombe

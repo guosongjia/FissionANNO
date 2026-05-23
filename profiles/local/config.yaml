@@ -1,0 +1,8 @@
+# Snakemake local single-machine profile
+cores: 64
+jobs: 64
+keep-going: true
+rerun-incomplete: true
+printshellcmds: true
+use-conda: false           # set true once envs are tested
+restart-times: 1

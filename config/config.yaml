@@ -1,0 +1,85 @@
+# FissionANNO config (defaults)
+# Override on CLI:  snakemake --config sc=0.90 outdir=/path/...
+
+# ----- input / output -----
+manifest: "config/manifest.tsv"   # sample<TAB>genome_fasta<TAB>species
+outdir: "/data/c/jiaguosong/ngs_assembly/Spombe/annotation"
+
+# ----- reference (L1) -----
+reference:
+  fasta:        "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.fasta"
+  gff3:         "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon_annotation.250923.gff3"
+  gff3_db:      "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon_annotation.250923.gff3_db"
+  protein_fa:   "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.250923.protein.ID.fasta"
+  cds_fa:       "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.250923.cds.ID.fasta"
+
+# ----- L1 lifton parameters -----
+lifton:
+  sc: 0.95            # copy-identity cutoff (only with -copies)
+  s:  0.5             # main mapping identity
+  a:  0.5             # main mapping coverage
+  copies: true
+  polish: true
+  infer_genes: true
+  exclude_partial: false   # IMPORTANT: stays false; refine handles partials
+
+# ----- L1 refine parameters -----
+refine:
+  last_pct_frac: 0.05      # truncate-to-stop fraction
+  last_pct_min_bp: 30      # absolute floor
+  upstream_window_bp: 300  # max upstream search for ATG
+  log_level: "INFO"
+
+# ----- L2 miniprot -----
+miniprot:
+  protein_lib_dir: "/data/a/jiaguosong/jiaguosong/FYRP/annotation"
+  species_files:
+    - S_japonicus.protein.fasta
+    - S_versatilis.protein.fasta
+    - S_pombe.protein.fasta
+    - S_pombe_CN.protein.fasta
+    - S_cryophilus.protein.fasta
+    - S_octosporus.protein.fasta
+    - S_lindneri.protein.fasta
+    - S_osmophilus_CA.protein.fasta
+    - S_osmophilus.protein.fasta
+  threads: 8
+  extra_opts: ""
+
+# ----- ortholog (SOG) table -----
+sog:
+  path: "/data/a/jiaguosong/jiaguosong/reference_genome_panel/nine_representative_strains_related/260511_SOG_updates_and_related_analysis/1_SOG_table_update/SOG_table.260511.updated2.tsv"
+  pombe_column: "Schizosaccharomyces_pombe"
+
+# ----- L1 vs L2 conflict resolution -----
+conflict:
+  overlap_reciprocal_min: 0.5
+  hgt_identity_advantage_pp: 10     # percentage points
+  hgt_bitscore_advantage: 50
+  diverged_paralog_max_identity: 0.6
+  adjacent_max_distance_bp: 2000
+
+# ----- L3 BRAKER4 -----
+braker4:
+  workflow_dir: "/data/c/jiaguosong/BRAKER4"
+  protein_fa:   "/data/c/jiaguosong/BRAKER4/orthodb/Fungi.9FissionYeast_251010.fa"
+  busco_lineage: "fungi_odb12"
+  enabled: true            # set false to skip L3 entirely
+
+# ----- L3 UniRef50 filter -----
+uniref50:
+  diamond_db: "/data/c/resource/database/uniref50_2022_12_14.dmnd"
+  evalue: 1.0e-5
+  threads: 8
+  schizo_taxon_keyword: "Schizosaccharomyces"   # used to flag non-Schizo top hits
+
+# ----- per-rule resources (single-machine, 64 cores / 251 GB) -----
+resources:
+  l1_lifton:    { threads: 4, mem_gb: 4 }
+  l1_refine:    { threads: 1, mem_gb: 2 }
+  l2_miniprot:  { threads: 8, mem_gb: 8 }
+  l2_resolve:   { threads: 2, mem_gb: 4 }
+  l3_mask:      { threads: 2, mem_gb: 4 }
+  l3_braker4:   { threads: 8, mem_gb: 16 }
+  l3_uniref50:  { threads: 8, mem_gb: 32 }
+  merge:        { threads: 2, mem_gb: 4 }
