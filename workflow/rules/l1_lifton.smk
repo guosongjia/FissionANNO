@@ -98,6 +98,21 @@ rule l1_unmapped_per_sample:
             > {log} 2>&1
         """
 
+rule l1_score_nonhealthy:
+    input:
+        lifton_done = os.path.join(OUTDIR, "results", "{sample}", "L1", ".lifton_done"),
+    output:
+        tsv = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.lifton_score_nonhealthy.tsv"),
+    log:
+        os.path.join(OUTDIR, "logs", "{sample}", "l1_score_nonhealthy.log"),
+    shell:
+        r"""
+        python workflow/scripts/lifton_score_nonhealthy.py \
+            --score {OUTDIR}/results/{wildcards.sample}/L1/{wildcards.sample}.lifton_output/score.txt \
+            --output {output.tsv} \
+            > {log} 2>&1
+        """
+
 rule unmapped_summary:
     input:
         per_sample = expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.unmapped.tsv"),

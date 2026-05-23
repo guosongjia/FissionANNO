@@ -42,4 +42,6 @@ rule l1_only:
                sample=SAMPLES),
         expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.unmapped.tsv"),
                sample=SAMPLES),
+        expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.lifton_score_nonhealthy.tsv"),
+               sample=SAMPLES),
         os.path.join(OUTDIR, "unmapped_summary.tsv"),
