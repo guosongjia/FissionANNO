@@ -35,7 +35,7 @@ rule l1_lifton:
         ln -sf {input.ref_fa} {params.workdir}/$(basename {input.ref_fa})
         cd {params.workdir}
         lifton \
-            -g {input.ref_gff} \
+            -g {input.ref_db} \
             -P {input.prot} \
             -T {input.cds} \
             -o {wildcards.sample}.lifton.gff3 \
@@ -91,7 +91,7 @@ rule l1_unmapped_per_sample:
         r"""
         python workflow/scripts/build_unmapped_tsv.py \
             --sample {wildcards.sample} \
-            --lifton-outdir {OUTDIR}/results/{wildcards.sample}/{wildcards.sample}.lifton_output \
+            --lifton-outdir {OUTDIR}/results/{wildcards.sample}/L1/{wildcards.sample}.lifton_output \
             --refine-stat {input.stat} \
             --refined-gff {input.gff} \
             --output {output.tsv} \

@@ -11,7 +11,7 @@ import pandas as pd
 configfile: "config/config.yaml"
 
 # ----- load manifest -----
-_manifest = pd.read_csv(config["manifest"], sep="\t", dtype=str).set_index("sample_name", drop=False)
+_manifest = pd.read_csv(config["manifest"], sep="\t", dtype=str, comment="#").set_index("sample_name", drop=False)
 SAMPLES = list(_manifest.index)
 SAMPLE_FASTA  = _manifest["genome_fasta"].to_dict()
 SAMPLE_SPECIES = _manifest["species"].to_dict()
@@ -40,3 +40,6 @@ rule l1_only:
     input:
         expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.refine.gff3"),
                sample=SAMPLES),
+        expand(os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.unmapped.tsv"),
+               sample=SAMPLES),
+        os.path.join(OUTDIR, "unmapped_summary.tsv"),

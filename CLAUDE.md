@@ -161,6 +161,8 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
 - A1–A5 修复决策依赖 5 株对照测试结果
 - **SOG 表覆盖度**：Lcon 5186 个基因中 5027 个（97%）在 SOG 表内；**159 个 Lcon 基因不在任何 SOG**。L2 冲突解决对这部分基因采用 fallback (b')：**无条件保留 M，标 `relation=no_sog_info_lift_unverifiable`**，不做阈值判定，由下游人工裁决。
 - **SOG 表数据 bug**：source TSV line 1634 (SOG_5834) 列数 10 vs 期望 13（少 3 个 tab）。已于 2026-05-22 修复，备份在 `*.bak.20260522`。`build_sog_index.py` 默认 strict 模式会 fail loud，`--no-strict` 可跳过坏行。
+- **MT 基因预过滤**：reference GFF 中的 `SPMIT.*`（8 个 mitochondrial genes）会被 lifton 错误转到核 contig（assembly 已去除 MT），产生假救回（如 SPMIT.11 → 10 aa 假 ORF）。**用户负责**在交付新 reference GFF 时预过滤掉 MT 基因；FissionANNO 不再单独处理。
+- **去 `-exclude_partial` 的真实收益（5 株统计）**：每株多 23-34 个基因；其中 ~5% 真实救回（如 SPBCPT2R1.10 经下游延伸 132 bp 找到新 stop，与 ref 99.1% identity）、~26% 正确归类为 pseudogene、~70% 标 truncated_at_contig_end（assembly 截断）。整体修改方向正确。
 
 ## 变更日志
 - 2026-05-22：initial commit，记录 grilling 第 1 轮所有决策。
@@ -168,3 +170,5 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
 - 2026-05-22：实施 `build_sog_index.py`，发现 SOG 表 line 1634 列数错误（已记入第 10 节）；Lcon 5027/5186 基因有 SOG 映射，159 基因需 fallback 规则。
 - 2026-05-22：修复 SOG 表 line 1634 数据 bug（备份 `*.bak.20260522`），SOG 总数 5311 → 5312。strict 模式现可通过。
 - 2026-05-23：实施 `build_unmapped_tsv.py`；refine stat 表加 `truncated_orf` 列；unmapped_summary 简化为 4 类 reason（`lifton_unmapped` / `refine_pseudogene` / `refine_truncated_at_contig_end` / `refine_norf_uncorrectable`）。`lifton_low_score`(damaging) 不作为独立 reason，由 score.txt 单独输出非健康部分。5 株分析显示 ~99% 的 norf_no_pseu 是 contig-end truncation（assembly 截断），仅 ~1% 是真受损基因。
+- 2026-05-23：env 安装完成（micromamba + 单环境，899 MB），加 `setup_env.sh` 端到端可重现脚本，git init。
+- 2026-05-23：L1 端到端 5 株跑通；修复两个 rule bug（lifton -g 改 ref_db 避免 gff3_db 并发竞争；unmapped 路径加 L1/）。每株 5067-5103 个基因，符合预期。识别两个待办：MT 基因 lifton 假救回（用户预过滤）、SPBCPT2R1.10 类自然变异下游延伸救回（refine 行为正确，保留）。
