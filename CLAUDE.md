@@ -48,6 +48,24 @@
 - 全基因组扫描，无 strict mask
 - singleton / SOG 缺失蛋白同样跑，但 hit 进 sidecar `intra_genus_HGT_candidates.tsv`，不进主 GFF
 
+### 3.3.L2_ORF_filter：miniprot 输出 ORF 完整性过滤（2026-05-23 决策）
+
+冲突解决（`l2_conflict_resolve.py`）之后、写入 `l2_kept.gff3` 之前，对所有进入主 GFF 的 mRNA 做严格 ORF 判定，剔除无完整 frame 的片段。
+
+**判定逻辑（按优先级）：**
+
+1. **有 `stop_codon` 行** → ORF 完整，保留，标 `orf_status=complete`
+2. **无 `stop_codon` + Target aa_start > 1**（partial 比对）→ ORF 不完整，标 `orf_status=partial_no_stop`，**进 sidecar**，不进主 GFF
+3. **无 `stop_codon` + Target aa_start = 1**（full 比对但无 stop）→ 提取 CDS 序列翻译，若含内部终止密码子或末端无 stop → 标 `orf_status=full_aln_no_stop`，**进 sidecar**，不进主 GFF
+
+**背景与动因：**
+5 株测试分析（2026-05-23）显示 non_ref + missing_lift + HGT_CN 共 96 条新增基因中：47% 有 stop（真基因）、27% partial 比对无 stop（可能 assembly 截断）、26% full 比对无 stop（可疑）。全部 25 个 full-aln-no-stop 均在 contig 内部（非 assembly 截断），其中 5/5 株重复出现的 SOMG_02463 / SZOMCA_02142 系蛋白库本身只有短片段所致。L2 不运行 ORF 修复逻辑，无法救回这些片段，应过滤而非保留进主 GFF 污染下游分析。
+
+**实现要点：**
+- 过滤在 `l2_conflict_resolve.py` 内或独立后处理脚本均可，建议在写 GFF 前执行
+- sidecar 文件记录 `orf_status` 列，供人工审查
+- `other_HGT`（S_japonicus 等远缘物种 hit）同样适用此过滤，预计可进一步减少假阳性
+
 ### 3.4 L3 BRAKER4
 - 外部 subprocess 调用 `/data/c/jiaguosong/BRAKER4/run_snakemake.sh` 风格
 - 蛋白证据 = `/data/c/jiaguosong/BRAKER4/orthodb/Fungi.9FissionYeast_251010.fa`
@@ -155,7 +173,7 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
 
 ## 10. 已知未决与延后项
 
-- HGT identity-advantage 阈值 10pp / 50bit：依经验，后续 ROC 调
+- HGT identity-advantage 阈值 10pp / 50bit：仅用于 lcon_id 存在时的比较；lcon_id=NA 时改用 `--hgt-min-identity 0.9` 绝对门槛（2026-05-23 确定）。远缘物种 hit 全部低于 0.9，仅 S_pombe_CN 通过。
 - L3 候选属外 HGT 真假判定：仅做 UniRef50 标注，最终判断留人工
 - 用户后续会提供新的 reference genome annotation：架构需对参考切换零代码改动
 - A1–A5 修复决策依赖 5 株对照测试结果
@@ -172,3 +190,32 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
 - 2026-05-23：实施 `build_unmapped_tsv.py`；refine stat 表加 `truncated_orf` 列；unmapped_summary 简化为 4 类 reason（`lifton_unmapped` / `refine_pseudogene` / `refine_truncated_at_contig_end` / `refine_norf_uncorrectable`）。`lifton_low_score`(damaging) 不作为独立 reason，由 score.txt 单独输出非健康部分。5 株分析显示 ~99% 的 norf_no_pseu 是 contig-end truncation（assembly 截断），仅 ~1% 是真受损基因。
 - 2026-05-23：env 安装完成（micromamba + 单环境，899 MB），加 `setup_env.sh` 端到端可重现脚本，git init。
 - 2026-05-23：L1 端到端 5 株跑通；修复两个 rule bug（lifton -g 改 ref_db 避免 gff3_db 并发竞争；unmapped 路径加 L1/）。每株 5067-5103 个基因，符合预期。识别两个待办：MT 基因 lifton 假救回（用户预过滤）、SPBCPT2R1.10 类自然变异下游延伸救回（refine 行为正确，保留）。
+- 2026-05-23：L2 miniprot 全基因组扫描 5 株跑通（每株 ~41k mRNA hits）。
+- 2026-05-23：L2 conflict resolution 完整实现并验证（`l2_conflict_resolve.py` v3）。关键设计变更：
+  - **取消前置 locus collapse**：v1 按空间重叠链式合并 mRNA 导致 gene-dense 区域产生 100-300 kb mega-locus，108 个假 missing_lift。v3 改为逐条 mRNA 独立判定 Case 1/2，仅 Case 2 候选做轻量 collapse 用于多物种比较。
+  - **单侧覆盖判据**：`overlap / len_L >= 0.5`（替代 reciprocal overlap），解决远缘物种大跨度 hit 误入 Case 2。
+  - **双重预过滤**：`--min-aln-aa 50 --min-identity 0.3`，去除随机短比对噪声（每株去除 ~370 条）。
+  - **real_conflict 去重**：每个 L1 基因只保留 best hit（~1100 → ~260 条/株），避免 domain-sharing 膨胀。
+  - **HGT identity 门槛**：`--hgt-min-identity 0.9`，低于此的 HGT 候选进 sidecar 待人工审核。5 株验证显示仅 S_pombe_CN 的 hit 通过（3-7 个/株，identity 0.96-0.99），远缘物种 hit 全部为 domain-sharing 噪声。
+  - 5 株最终结果：Case 2 max span 6.4 kb（无 mega-locus）；missing_lift 0-2/株；non_reference_gene 7-13/株；real_conflict(dedup) 248-278/株；sidecar 66-80/株。
+  - Snakemake 集成测试通过（`--until l2_conflict_resolve`）。
+  - 待 commit（3 文件改动：`l2_conflict_resolve.py`、`l2_miniprot.smk`、`config.yaml`）。config 需补 `hgt_min_identity` 参数并同步 rule。
+- 2026-05-23：L2 ORF 完整性分析（5 株）。non_ref + missing_lift + HGT_CN 共 96 条：47% 有 stop_codon（真基因）、27% partial 比对无 stop（assembly 截断/待定）、26% full 比对但无 stop（可疑）。全部 25 个"full 比对无 stop"均在 contig 内部，其中 5/5 株重复出现的 SOMG_02463 / SZOMCA_02142 系蛋白库本身只有短片段所致。**决策：L2 冲突解决后须新增 ORF 完整性过滤步骤**，剔除无完整 frame 的 miniprot 片段，规则见 §3.3.L2_ORF_filter。
+- 2026-05-24：`l2_conflict_resolve.py` 重写为 v4，3 个文件改动（脚本、smk、config），未 commit。关键架构变更：
+  - **彻底去除 Case 1**：与 L1 基因有空间重叠（≥ 50% L 被覆盖）的 miniprot hit 全部静默丢弃。lifton 本身已整合 miniprot 逻辑，overlapping hit 不可能提供比 lifton transfer 更可靠的注释，保留只会引入噪声。原 Case 1 每株 ~40,000+ 条 overlap hit（~390 个之前错误进 GFF）全部去除。
+  - **GFF3 结构修复**：miniprot 不输出 gene/exon 行；v4 自动合成完整 gene+mRNA+exon+CDS 结构，exon 坐标镜像 CDS（miniprot 产出单 exon 模型）。
+  - **ORF 过滤集成**：无 stop_codon 的 mRNA → sidecar，同时保留 orf_status 标签。
+  - **输出文件改名**：`conflict_resolution.tsv` → `l2_candidates.tsv`（11 列，有描述性列名）；去除 `--bit-adv` 参数；config 补 `hgt_min_identity: 0.9`、移除 `hgt_bitscore_advantage`。
+  - **5 株验证结果**：GFF 进入基因 1–12/株（全部含 stop_codon）；DY47073（近 Lcon 菌株）仅 1 个进 GFF，符合预期（其 7 个 non_reference 候选全部无 stop codon，属片段噪声）。TSV 候选：non_reference_gene 7–13/株，intra_genus_HGT_from_S_pombe_CN 3–7/株，missing_lift 0–2/株。
+  - **Snakemake 集成测试通过**（`--forcerun l2_conflict_resolve --until l2_conflict_resolve`，5 株并行，结果写入 `results/{sample}/L2/`）。
+  - **未 commit**（4 文件：`l2_conflict_resolve.py`、`l2_miniprot.smk`、`config.yaml`、`CLAUDE.md`）。
+  - **后续**：L2 主脚本仍在精细化开发中，待开发完成后统一 commit。待确认：TSV 是否只保留 ORF 过滤后的条目。
+- 2026-05-24：`l2_conflict_resolve.py` 升级为 v6（5 文件改动），L2 开发完成。关键变更：
+  - **ORF 覆盖度过滤**：除 stop_codon 检查外，新增要求翻译后 CDS 氨基酸长度 ≥ 95% query 蛋白长度（`--orf-min-coverage 0.95`）。5 株共 6 个 `orf_too_short` 进 sidecar（覆盖度 0.21–0.78），全部为长蛋白短片段。其中 2 个原为 `missing_lift`，证实片段污染假说。
+  - **HGT pairwise cutoff 门槛**：替代原"双侧单拷贝"门槛。`build_sog_index.py` 预计算每个 SOG 内 Lcon × 其他物种的 pairwise global alignment max identity（BioPython `PairwiseAligner` + BLOSUM62，identity = matches / aligned_length 含 gap）。HGT 判定要求 candidate identity > 该 cutoff，否则降为 `non_reference_gene`。
+  - **HGT 判定完整门槛链**：(1) `id_adv_pp ≥ 10pp` 或 `lcon_id == None`；(2) `best_hit.identity ≥ 0.9`；(3) `best_hit.identity > sog_lcon_max_id[og_m][donor_sp]`；(4) ORF 完整且 ≥ 95% query 长度。
+  - **SOG_5347 案例验证**：DY47073 NODE_25 的 SZPOCN_04645 hit（identity 0.9225）正确降级为 `non_reference_gene`（cutoff = 0.959，来自 SPCC622.06c × SZPOCN_04654 的 ortholog 对）。该基因确认存在于 Lcon 参考基因组 III:1437839-1438226 但 PomBase 未注释。
+  - **5 株最终结果**：GFF 进入 1–12 基因/株；HGT_from_S_pombe_CN 0–3/株（SOG_5376/5648/5358，candidate identity 0.98–1.00 > cutoff）；non_reference_gene 1–9/株；missing_lift 0–1/株。无跨物种 HGT 进入 GFF（远缘物种 hit 全部 identity < 0.9 进 sidecar）。
+  - **生物学结论**：5 株中检测到的 `intra_genus_HGT_from_S_pombe_CN` 本质上是 S. pombe 群体内谱系分化（目标菌株携带 CN-like 拷贝而非 Lcon-like 拷贝），不是真正的跨物种 HGT。
+  - **改动文件**（5 个，未 commit）：`l2_conflict_resolve.py`、`l2_miniprot.smk`、`config.yaml`、`build_sog_index.py`、`common.smk`。
+  - **L2 开发完成**，待用户决定 commit 时机。

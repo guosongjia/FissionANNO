@@ -24,6 +24,7 @@ rule l2_build_combined_proteins:
 rule l2_build_sog_index:
     input:
         sog = config["sog"]["path"],
+        proteins = os.path.join(OUTDIR, "shared", "combined_9sp.protein.fa"),
     output:
         idx = os.path.join(OUTDIR, "shared", "sog_index.pkl"),
     log:
@@ -32,6 +33,7 @@ rule l2_build_sog_index:
         r"""
         python workflow/scripts/build_sog_index.py \
             --sog {input.sog} \
+            --protein-fa {input.proteins} \
             --output {output.idx} \
             2> {log}
         """

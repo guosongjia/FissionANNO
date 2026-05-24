@@ -12,17 +12,20 @@ column (OG_category) and the last column (of_og_num).
 
 Output
 ------
-A pickle file containing a dict with three keys:
+A pickle file containing a dict with keys:
   - "protein_to_sog": {protein_id: SOG_id}
   - "sog_to_proteins": {SOG_id: {species_full_name: [protein_id, ...]}}
   - "sog_to_category": {SOG_id: OG_category}
+  - "sog_lcon_max_id": {SOG_id: {other_sp_short: max_identity_float}}
   - "species": [species_full_name, ...]   # column order preserved
   - "source_path": str
   - "n_sogs": int
   - "n_proteins": int
 
-A warning is emitted for any protein_id that appears in more than one SOG
-(should not happen with the curated table, but worth catching).
+When --protein-fa is provided, pairwise global alignments are computed for
+each SOG between Lcon members and each other species' members. The maximum
+identity (matches / aligned_length incl. gaps) per (SOG, other_species) pair
+is stored in "sog_lcon_max_id".
 """
 import argparse
 import logging
@@ -94,9 +97,89 @@ def parse_sog_table(path: str, strict: bool = True):
     }
 
 
+def load_protein_seqs(fa_path: str) -> Dict[str, str]:
+    seqs: Dict[str, str] = {}
+    cur_id, cur_parts = None, []
+    with open(fa_path) as fh:
+        for line in fh:
+            if line.startswith(">"):
+                if cur_id is not None:
+                    seqs[cur_id] = "".join(cur_parts)
+                cur_id = line[1:].split()[0]
+                cur_parts = []
+            else:
+                cur_parts.append(line.strip())
+        if cur_id is not None:
+            seqs[cur_id] = "".join(cur_parts)
+    return seqs
+
+
+def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
+                          fa_path: str) -> Dict[str, Dict[str, float]]:
+    """For each SOG, compute max identity (matches / aligned_length incl gaps)
+    between every Lcon protein and every other-species protein. Identity definition
+    matches miniprot's Identity field for cross-comparability.
+
+    Returns {SOG_id: {other_sp_short: max_identity}}.
+    """
+    from Bio.Align import PairwiseAligner, substitution_matrices
+
+    full_to_short = {sp: sp.replace("Schizosaccharomyces_", "S_") for sp in species}
+    seqs = load_protein_seqs(fa_path)
+    logging.info(f"  loaded {len(seqs)} protein sequences from {fa_path}")
+
+    aligner = PairwiseAligner()
+    aligner.mode = "global"
+    aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
+    aligner.open_gap_score = -11
+    aligner.extend_gap_score = -1
+
+    out: Dict[str, Dict[str, float]] = {}
+    n_sogs_with_pair, n_alignments = 0, 0
+    for sog_id, sp2pids in sog_to_proteins.items():
+        lcon_pids = sp2pids.get("Schizosaccharomyces_pombe", [])
+        if not lcon_pids:
+            continue
+        per_other: Dict[str, float] = {}
+        for sp_full, pids in sp2pids.items():
+            if sp_full == "Schizosaccharomyces_pombe" or not pids:
+                continue
+            sp_short = full_to_short[sp_full]
+            best = 0.0
+            for a in lcon_pids:
+                sa = seqs.get(f"S_pombe|{a}")
+                if not sa:
+                    continue
+                for b in pids:
+                    sb = seqs.get(f"{sp_short}|{b}")
+                    if not sb:
+                        continue
+                    aln = aligner.align(sa, sb)[0]
+                    aligned_a, aligned_b = str(aln[0]), str(aln[1])
+                    aln_len = len(aligned_a)
+                    if aln_len == 0:
+                        continue
+                    matches = sum(1 for x, y in zip(aligned_a, aligned_b)
+                                  if x == y and x != "-")
+                    ident = matches / aln_len
+                    if ident > best:
+                        best = ident
+                    n_alignments += 1
+            if best > 0:
+                per_other[sp_short] = best
+        if per_other:
+            out[sog_id] = per_other
+            n_sogs_with_pair += 1
+    logging.info(f"  computed pairwise identities for {n_sogs_with_pair} SOGs "
+                 f"({n_alignments} alignments)")
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--sog", required=True, help="path to SOG table TSV")
+    p.add_argument("--protein-fa", default=None,
+                   help="combined 9-species protein fasta for pairwise identity computation")
     p.add_argument("--output", required=True, help="output pickle path")
     p.add_argument("--no-strict", action="store_true",
                    help="proceed even if rows have wrong column count (default: fail loud)")
@@ -108,6 +191,13 @@ def main():
     logging.info(f"reading {args.sog}")
     idx = parse_sog_table(args.sog, strict=not args.no_strict)
     logging.info(f"parsed {idx['n_sogs']} SOGs, {idx['n_proteins']} proteins, {len(idx['species'])} species")
+
+    if args.protein_fa:
+        logging.info(f"computing Lcon pairwise identities from {args.protein_fa}")
+        idx["sog_lcon_max_id"] = compute_lcon_pairwise(
+            idx["sog_to_proteins"], idx["species"], args.protein_fa)
+    else:
+        idx["sog_lcon_max_id"] = {}
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, "wb") as fh:

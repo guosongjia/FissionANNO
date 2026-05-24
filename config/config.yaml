@@ -55,9 +55,12 @@ sog:
 conflict:
   overlap_reciprocal_min: 0.5
   hgt_identity_advantage_pp: 10     # percentage points
-  hgt_bitscore_advantage: 50
+  hgt_min_identity: 0.9             # HGT candidates below this go to sidecar
   diverged_paralog_max_identity: 0.6
   adjacent_max_distance_bp: 2000
+  min_aln_aa: 50                    # pre-filter: discard hits < 50 aa
+  min_identity: 0.3                 # pre-filter: discard hits < 30% identity
+  orf_min_coverage: 0.95            # translated CDS aa / query protein aa lower bound
 
 # ----- L3 BRAKER4 -----
 braker4:

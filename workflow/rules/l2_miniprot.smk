@@ -26,18 +26,22 @@ rule l2_conflict_resolve:
         l1_gff   = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.refine.gff3"),
         l2_gff   = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.miniprot.gff3"),
         sog_idx  = os.path.join(OUTDIR, "shared", "sog_index.pkl"),
+        proteins = os.path.join(OUTDIR, "shared", "combined_9sp.protein.fa"),
     output:
         gff      = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept.gff3"),
-        conflict = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.conflict_resolution.tsv"),
+        tsv      = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_candidates.tsv"),
         sidecar  = os.path.join(OUTDIR, "results", "{sample}", "sidecar", "{sample}.intra_genus_HGT_candidates.tsv"),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l2_resolve.log"),
     params:
         overlap_min   = config["conflict"]["overlap_reciprocal_min"],
         id_adv_pp     = config["conflict"]["hgt_identity_advantage_pp"],
-        bit_adv       = config["conflict"]["hgt_bitscore_advantage"],
+        hgt_min_id    = config["conflict"]["hgt_min_identity"],
         diverged_max  = config["conflict"]["diverged_paralog_max_identity"],
         adjacent_max  = config["conflict"]["adjacent_max_distance_bp"],
+        min_aln_aa    = config["conflict"]["min_aln_aa"],
+        min_identity  = config["conflict"]["min_identity"],
+        orf_min_cov   = config["conflict"]["orf_min_coverage"],
     threads: lambda w: config["resources"]["l2_resolve"]["threads"]
     shell:
         r"""
@@ -47,13 +51,17 @@ rule l2_conflict_resolve:
             --l1-gff {input.l1_gff} \
             --l2-gff {input.l2_gff} \
             --sog-index {input.sog_idx} \
+            --protein-fa {input.proteins} \
             --overlap-min {params.overlap_min} \
             --id-adv-pp {params.id_adv_pp} \
-            --bit-adv {params.bit_adv} \
+            --hgt-min-identity {params.hgt_min_id} \
             --diverged-max-id {params.diverged_max} \
             --adjacent-max-bp {params.adjacent_max} \
+            --min-aln-aa {params.min_aln_aa} \
+            --min-identity {params.min_identity} \
+            --orf-min-coverage {params.orf_min_cov} \
             --out-gff {output.gff} \
-            --out-conflict {output.conflict} \
+            --out-tsv {output.tsv} \
             --out-sidecar {output.sidecar} \
             > {log} 2>&1
         """
