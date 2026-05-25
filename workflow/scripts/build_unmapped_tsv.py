@@ -12,9 +12,12 @@ Reason values:
   - refine_truncated_at_contig_end : refine could not produce a valid ORF;
                                      the gene sits at a contig boundary
                                      (refine stat: valid_orf=N AND pseudogene=N AND truncated_orf=Y)
-  - refine_norf_uncorrectable    : refine could not produce a valid ORF and
-                                   the locus is not at a contig end — likely
-                                   a real ORF damage refine cannot fix
+  - refine_frame_disrupted       : refine could not produce a valid ORF and
+                                   the locus is not at a contig end — the
+                                   reading frame is too disrupted for refine
+                                   to repair, likely caused by sequence
+                                   divergence (frameshifting indels / scattered
+                                   substitutions that destroy stop codons)
                                    (refine stat: valid_orf=N AND pseudogene=N AND truncated_orf=N)
 
 The first reason draws from `<lifton_outdir>/stats/unmapped_features.txt`
@@ -120,7 +123,7 @@ def classify(stat_row: Dict[str, str]) -> Optional[str]:
     if stat_row["valid_orf"] == "N":
         if stat_row["truncated_orf"] == "Y":
             return "refine_truncated_at_contig_end"
-        return "refine_norf_uncorrectable"
+        return "refine_frame_disrupted"
     return None  # valid_orf=Y AND pseudogene=N -> not unmapped
 
 

@@ -150,7 +150,7 @@ reason 取值（4 类，由 `build_unmapped_tsv.py` 实际生成）：
 - `lifton_unmapped` — lifton 完全没找到映射（来自 `stats/unmapped_features.txt`）
 - `refine_pseudogene` — refine 标 pseudogene
 - `refine_truncated_at_contig_end` — refine 救不回 + 在 contig 边界（assembly 不完整，~99% 此类）
-- `refine_norf_uncorrectable` — refine 救不回 + 非边界（真 ORF 损伤，~1% 此类）
+- `refine_frame_disrupted` — refine 救不回 + 非边界（reading frame 破坏，可能由序列分化导致 — frameshift indel / 散在突变破坏 stop codon，~1% 此类）
 
 note 列若有 lifton flag 信息（如 `frameshift;stop_codon_gain`）则填入。
 
@@ -187,7 +187,7 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
 - 2026-05-22：refine 脚本测试与修复完成；A1+A2 修（确认 5 株上零差异）、B1 (last_pct_min_bp=30) 救回 0–3 个短伪基因/株、B3 (upstream_window_bp=300) 5 株上未触发但作为防御保留、C1/C2/C3 加表头与 phase 兜底。`--no-final-phase-recompute` 提供 legacy 兼容开关。
 - 2026-05-22：实施 `build_sog_index.py`，发现 SOG 表 line 1634 列数错误（已记入第 10 节）；Lcon 5027/5186 基因有 SOG 映射，159 基因需 fallback 规则。
 - 2026-05-22：修复 SOG 表 line 1634 数据 bug（备份 `*.bak.20260522`），SOG 总数 5311 → 5312。strict 模式现可通过。
-- 2026-05-23：实施 `build_unmapped_tsv.py`；refine stat 表加 `truncated_orf` 列；unmapped_summary 简化为 4 类 reason（`lifton_unmapped` / `refine_pseudogene` / `refine_truncated_at_contig_end` / `refine_norf_uncorrectable`）。`lifton_low_score`(damaging) 不作为独立 reason，由 score.txt 单独输出非健康部分。5 株分析显示 ~99% 的 norf_no_pseu 是 contig-end truncation（assembly 截断），仅 ~1% 是真受损基因。
+- 2026-05-23：实施 `build_unmapped_tsv.py`；refine stat 表加 `truncated_orf` 列；unmapped_summary 简化为 4 类 reason（`lifton_unmapped` / `refine_pseudogene` / `refine_truncated_at_contig_end` / `refine_frame_disrupted`）。`lifton_low_score`(damaging) 不作为独立 reason，由 score.txt 单独输出非健康部分。5 株分析显示 ~99% 的 norf_no_pseu 是 contig-end truncation（assembly 截断），仅 ~1% 是真受损基因。
 - 2026-05-23：env 安装完成（micromamba + 单环境，899 MB），加 `setup_env.sh` 端到端可重现脚本，git init。
 - 2026-05-23：L1 端到端 5 株跑通；修复两个 rule bug（lifton -g 改 ref_db 避免 gff3_db 并发竞争；unmapped 路径加 L1/）。每株 5067-5103 个基因，符合预期。识别两个待办：MT 基因 lifton 假救回（用户预过滤）、SPBCPT2R1.10 类自然变异下游延伸救回（refine 行为正确，保留）。
 - 2026-05-23：L2 miniprot 全基因组扫描 5 株跑通（每株 ~41k mRNA hits）。
