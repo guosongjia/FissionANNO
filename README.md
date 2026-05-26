@@ -16,7 +16,7 @@ flowchart TD
         L1A --> L1B --> L1C
     end
 
-    L1OUT[("L1/refine.gff3<br/>~5k genes/strain")]
+    L1OUT[("L1/refine.gff3")]
 
     subgraph L2["L2 — Cross-species protein scan & SOG conflict resolution"]
         direction TB
@@ -63,12 +63,7 @@ flowchart TD
 small-scale start/stop codon repair; unmapped genes are bucketed into 4 reason
 classes. Main output: `refine.gff3`.
 
-**L2** uses a multi-species protein library to discover genes that L1 missed or
-that were horizontally transferred within the genus. Only hits **not** overlapping
-L1 are kept; the SOG (Schizosaccharomyces orthogroup) table + pairwise identity assign one of 4 relation labels,
-and an ORF-completeness filter pushes fragment noise to the sidecar (a separate
-TSV for manual review). Main output:
-1–12 high-confidence new genes per strain.
+**L2** uses a multi-species protein library to discover genes that L1 missed or that were horizontally transferred within the genus. Only hits **not** overlapping L1 are kept; the SOG (Schizosaccharomyces orthogroup) table + pairwise identity assign one of 4 relation labels, and an ORF-completeness filter pushes fragment noise to the sidecar (a separate TSV for manual review). Main output: 1–12 high-confidence new genes per strain.
 
 **L3** runs ANNEVO (pretrained Fungi DNN) on residual regions not covered by
 L1/L2, targeting extra-genus HGT. Hard-masks annotated regions, extracts ≥1 kb
