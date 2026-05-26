@@ -2,8 +2,6 @@
 
 Population-scale annotation pipeline for *Schizosaccharomyces pombe* (extensible to other Schizosaccharomyces species).
 
-See [CLAUDE.md](CLAUDE.md) for the design record from the grilling phase.
-
 ## Pipeline Overview
 
 ```mermaid
