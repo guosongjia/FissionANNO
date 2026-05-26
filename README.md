@@ -26,7 +26,7 @@ flowchart TD
         L2B["<b>① Pre-filter</b><br/>drop if any of:<br/>• aln &lt; 50 aa<br/>• identity &lt; 0.3<br/>• overlap with L1 gene ≥ 50%"]
         L2C["<b>② Locus collapse + SOG classification</b><br/>4 relation labels:<br/>• non_reference_gene<br/>• missing_lift<br/>• intra_genus_HGT_from_&lt;sp&gt;<br/>• diverged_paralog_or_misannot"]
         L2D["<b>③ HGT double gate</b> (HGT candidates only)<br/>candidate_id &gt; SOG Lcon×donor pairwise max<br/>(else demote → non_reference_gene)<br/>candidate_id ≥ 0.9 (else → sidecar)"]
-        L2E["<b>④ ORF completeness filter</b><br/>require stop_codon<br/>CDS aa / query aa ≥ 0.95"]
+        L2E["<b>④ ORF completeness filter</b><br/>require intact ORF<br/>CDS aa / query aa ≥ 0.95"]
         L2A --> L2B --> L2C --> L2D --> L2E
     end
 
@@ -76,38 +76,6 @@ L1/L2, targeting extra-genus HGT. Hard-masks annotated regions, extracts ≥1 kb
 fragments, predicts genes ab initio (with introns), then filters by UniRef50
 (drop no-hit, exclude Schizo/TE/contamination). Also rescues L2 sidecar entries
 validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
-
-## Layout
-```
-FissionANNO/
-  CLAUDE.md                    # decision record
-  config/
-    config.yaml                # all tunables
-    manifest.tsv               # per-strain input
-  workflow/
-    Snakefile
-    rules/
-      common.smk
-      l1_lifton.smk
-      l2_miniprot.smk
-      l3_annevo.smk
-      merge.smk
-    scripts/
-      lifton_gff3_refine.py
-      build_sog_index.py
-      build_unmapped_tsv.py
-      l2_conflict_resolve.py
-      hard_mask_regions.py
-      extract_residuals.py
-      remap_coordinates.py
-      l3_diamond_search.py
-      l2_rescue_from_l3.py
-      l3_uniref50_filter.py
-      merge_layers.py
-      capture_versions.py
-  profiles/
-    local/config.yaml          # 64-core single-machine profile
-```
 
 ## Status
 - L1: verified end-to-end on 5 test strains (2026-05-23)
