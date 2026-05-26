@@ -1,6 +1,6 @@
 # FissionANNO
 
-Population-scale annotation pipeline for *Schizosaccharomyces pombe* (extensible to other Schizosaccharomyces species).
+A Snakemake pipeline for population-scale genome annotation in haploid fission yeasts (*Schizosaccharomyces*).
 
 ## Pipeline Overview
 
