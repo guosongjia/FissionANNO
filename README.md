@@ -59,11 +59,11 @@ flowchart TD
     class L2GFF,L3GFF out
 ```
 
-**L1** transfers PomBase annotation gene-by-gene to the target strain, with
+**L1** transfers the reference annotation gene-by-gene to the target strain, with
 small-scale start/stop codon repair; unmapped genes are bucketed into 4 reason
 classes. Main output: `refine.gff3` (~5k genes/strain).
 
-**L2** uses a 9-species protein library to discover genes that L1 missed or
+**L2** uses a multi-species protein library to discover genes that L1 missed or
 that were horizontally transferred within the genus. Only hits **not** overlapping
 L1 are kept; the SOG table + pairwise identity assign one of 4 relation labels,
 and an ORF-completeness filter pushes fragment noise to the sidecar. Main output:
@@ -72,8 +72,8 @@ and an ORF-completeness filter pushes fragment noise to the sidecar. Main output
 **L3** runs ANNEVO (pretrained Fungi DNN) on residual regions not covered by
 L1/L2, targeting extra-genus HGT. Hard-masks annotated regions, extracts ≥1 kb
 fragments, predicts genes ab initio (with introns), then filters by UniRef50
-(drop no-hit, exclude Schizo/TE/contamination). Also rescues L2 sidecar entries
-validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
+(drop no-hit, exclude same-genus/TE/contamination). Also rescues L2 sidecar
+entries validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
 
 ## Setup
 
