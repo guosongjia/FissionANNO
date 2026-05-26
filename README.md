@@ -59,17 +59,11 @@ flowchart TD
     class L2GFF,L3GFF out
 ```
 
-**L1** transfers the reference annotation gene-by-gene to the target strain, with
-small-scale start/stop codon repair; unmapped genes are bucketed into 4 reason
-classes. Main output: `refine.gff3`.
+**L1** transfers the reference annotation gene-by-gene to the target strain using [Liftoff](https://github.com/agshumate/Liftoff), followed by a custom refinement step that repairs invalid ORFs (extending to a downstream stop codon, scanning upstream for a missing start codon, or reclassifying as pseudogene when repair is not possible). Genes that could not be transferred are catalogued with one of four reason classes. Main output: `refine.gff3`.
 
-**L2** uses a multi-species protein library to discover genes that L1 missed or that were horizontally transferred within the genus. Only hits **not** overlapping L1 are kept; the SOG (Schizosaccharomyces orthogroup) table + pairwise identity assign one of 4 relation labels, and an ORF-completeness filter pushes fragment noise to the sidecar (a separate TSV for manual review). Main output: 1–12 high-confidence new genes per strain.
+**L2** uses a multi-species protein library to discover genes that L1 missed or that were horizontally transferred within the genus. [miniprot](https://github.com/lh3/miniprot) scans the whole genome without masking; hits overlapping L1 genes are silently dropped. The remaining candidates are classified using a SOG (Schizosaccharomyces orthogroup) table: each locus is assigned one of four relation labels (*non_reference_gene*, *missing_lift*, *intra_genus_HGT_from_\<sp\>*, *diverged_paralog_or_misannot*). HGT candidates pass a double identity gate (absolute floor + SOG-derived pairwise cutoff), and an ORF-completeness filter pushes fragment noise to the sidecar (a separate TSV for manual review). Main output: 1–12 high-confidence new genes per strain.
 
-**L3** runs ANNEVO (pretrained Fungi DNN) on residual regions not covered by
-L1/L2, targeting extra-genus HGT. Hard-masks annotated regions, extracts ≥1 kb
-fragments, predicts genes ab initio (with introns), then filters by UniRef50
-(drop no-hit, exclude same-genus/TE/contamination). Also rescues L2 sidecar
-entries validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
+**L3** targets extra-genus HGT in regions not covered by L1/L2. Gene-annotated regions are hard-masked (replaced with N), and residual intervals ≥ 1 kb are extracted and fed to [ANNEVO](https://github.com/xjtu-omics/ANNEVO), a pretrained deep-learning gene predictor with a Fungi-specific model that supports intron prediction without requiring retraining. Predictions are remapped to original genome coordinates and searched against UniRef50 with DIAMOND. A multi-layer filter removes hits to same-genus proteins, transposable elements, and likely assembly contaminants (verified by contig context and read-depth). As a side effect, L3 also rescues L2 sidecar entries (*singleton_no_sog*) that are independently validated by ANNEVO, reclassifying them as *non_reference_gene*. Main output: 0–3 putative extra-genus HGT candidates per strain.
 
 ## Setup
 
