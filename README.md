@@ -77,12 +77,6 @@ fragments, predicts genes ab initio (with introns), then filters by UniRef50
 (drop no-hit, exclude Schizo/TE/contamination). Also rescues L2 sidecar entries
 validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
 
-## Status
-- L1: verified end-to-end on 5 test strains (2026-05-23)
-- L2: conflict resolution v6, verified on 5 strains (2026-05-24)
-- L3: ANNEVO-based HGT discovery, verified on 5 strains (2026-05-26)
-- Merge: implemented, pending full integration test
-
 ## Setup
 
 Prerequisites: `conda` on PATH.
