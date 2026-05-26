@@ -6,7 +6,7 @@ A Snakemake pipeline for population-scale genome annotation in haploid fission y
 
 ```mermaid
 flowchart TD
-    IN["<b>Input</b><br/>per-strain genome FASTA<br/>+ Lcon reference (FASTA + GFF3)"]
+    IN["<b>Input</b><br/>per-strain genome FASTA<br/>+ reference annotation (FASTA + GFF3)"]
 
     subgraph L1["L1 — Reference transfer"]
         direction TB
@@ -16,14 +16,14 @@ flowchart TD
         L1A --> L1B --> L1C
     end
 
-    L1OUT[("L1/refine.gff3<br/>~5067–5103 genes/strain")]
+    L1OUT[("L1/refine.gff3<br/>~5k genes/strain")]
 
     subgraph L2["L2 — Cross-species protein scan & SOG conflict resolution"]
         direction TB
         L2A["<b>miniprot</b> whole-genome scan<br/>query = 9 species protein FASTA<br/>(no masking)"]
         L2B["<b>① Pre-filter</b><br/>drop if any of:<br/>• aln &lt; 50 aa<br/>• identity &lt; 0.3<br/>• overlap with L1 gene ≥ 50%"]
-        L2C["<b>② Locus collapse + SOG classification</b><br/>4 relation labels:<br/>• non_reference_gene (absent from Lcon reference)<br/>• missing_lift (present in Lcon but lifton failed)<br/>• intra_genus_HGT_from_&lt;sp&gt; (closer to donor than Lcon)<br/>• diverged_paralog_or_misannot (ambiguous)"]
-        L2D["<b>③ HGT double gate</b> (HGT candidates only)<br/>candidate_id &gt; SOG Lcon×donor pairwise max<br/>(else demote → non_reference_gene)<br/>candidate_id ≥ 0.9 (else → sidecar)"]
+        L2C["<b>② Locus collapse + SOG classification</b><br/>4 relation labels:<br/>• non_reference_gene (absent from reference)<br/>• missing_lift (in reference but lifton failed)<br/>• intra_genus_HGT_from_&lt;sp&gt; (closer to donor than reference)<br/>• diverged_paralog_or_misannot (ambiguous)"]
+        L2D["<b>③ HGT double gate</b> (HGT candidates only)<br/>candidate_id &gt; SOG ref×donor pairwise max<br/>(else demote → non_reference_gene)<br/>candidate_id ≥ 0.9 (else → sidecar)"]
         L2E["<b>④ ORF completeness filter</b><br/>require intact ORF<br/>CDS aa / query aa ≥ 0.95"]
         L2A --> L2B --> L2C --> L2D --> L2E
     end
