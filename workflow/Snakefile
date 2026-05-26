@@ -25,7 +25,7 @@ def s_results(sample, *parts):
 include: "rules/common.smk"
 include: "rules/l1_lifton.smk"
 include: "rules/l2_miniprot.smk"
-include: "rules/l3_braker4.smk"
+include: "rules/l3_annevo.smk"
 include: "rules/merge.smk"
 
 # ----- top-level targets -----

@@ -1,9 +1,9 @@
-"""Merge L1 + L2_kept + L3_kept into a single per-strain GFF with provenance tags."""
+"""Merge L1 + L2_kept_rescued + L3_kept into a single per-strain GFF with provenance tags."""
 
 rule merge_per_strain:
     input:
         l1 = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.refine.gff3"),
-        l2 = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept.gff3"),
+        l2 = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept_rescued.gff3"),
         l3 = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.l3_kept.gff3"),
     output:
         gff = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),

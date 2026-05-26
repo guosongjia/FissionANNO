@@ -62,12 +62,18 @@ conflict:
   min_identity: 0.3                 # pre-filter: discard hits < 30% identity
   orf_min_coverage: 0.95            # translated CDS aa / query protein aa lower bound
 
-# ----- L3 BRAKER4 -----
-braker4:
-  workflow_dir: "/data/c/jiaguosong/BRAKER4"
-  protein_fa:   "/data/c/jiaguosong/BRAKER4/orthodb/Fungi.9FissionYeast_251010.fa"
-  busco_lineage: "fungi_odb12"
-  enabled: true            # set false to skip L3 entirely
+# ----- L3 ANNEVO -----
+annevo:
+  workflow_dir: "/data/c/jiaguosong/ANNEVO"
+  conda_env_bin: "/data/c/jiaguosong/conda_envs/annevo/bin"
+  model_path: "saved_model/ANNEVO_Fungi.pt"
+  lineage: "Fungi"
+  batch_size: 8
+  min_residual_bp: 1000
+  min_prot_len: 200
+  min_aln_len: 200
+  bam_dir: "/hugedata/jiaguosong/data_c_jiaguosong_backup/ngs_assembly/Spombe/10_select_final_assembly/KAT_mapping_bam"
+  coverage_floor: 0.2
 
 # ----- L3 UniRef50 filter -----
 uniref50:
@@ -82,7 +88,6 @@ resources:
   l1_refine:    { threads: 1, mem_gb: 2 }
   l2_miniprot:  { threads: 8, mem_gb: 8 }
   l2_resolve:   { threads: 2, mem_gb: 4 }
-  l3_mask:      { threads: 2, mem_gb: 4 }
-  l3_braker4:   { threads: 8, mem_gb: 16 }
+  l3_annevo:    { threads: 8, mem_gb: 16 }
   l3_uniref50:  { threads: 8, mem_gb: 32 }
   merge:        { threads: 2, mem_gb: 4 }
