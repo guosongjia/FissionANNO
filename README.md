@@ -66,7 +66,8 @@ classes. Main output: `refine.gff3` (~5k genes/strain).
 **L2** uses a multi-species protein library to discover genes that L1 missed or
 that were horizontally transferred within the genus. Only hits **not** overlapping
 L1 are kept; the SOG table + pairwise identity assign one of 4 relation labels,
-and an ORF-completeness filter pushes fragment noise to the sidecar. Main output:
+and an ORF-completeness filter pushes fragment noise to the sidecar (a separate
+TSV for manual review). Main output:
 1–12 high-confidence new genes per strain.
 
 **L3** runs ANNEVO (pretrained Fungi DNN) on residual regions not covered by
