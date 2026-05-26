@@ -59,7 +59,7 @@ flowchart TD
     class L2GFF,L3GFF out
 ```
 
-**L1** transfers the reference annotation gene-by-gene to the target strain using [Liftoff](https://github.com/agshumate/Liftoff), followed by a custom refinement step that repairs invalid ORFs (extending to a downstream stop codon, scanning upstream for a missing start codon, or reclassifying as pseudogene when repair is not possible). Genes that could not be transferred are catalogued with one of four reason classes. Main output: `refine.gff3`.
+**L1** transfers the reference annotation gene-by-gene to the target strain using [LiftOn](https://github.com/Kuanhao-Chao/LiftOn), followed by a custom refinement step that repairs invalid ORFs (extending to a downstream stop codon, scanning upstream for a missing start codon, or reclassifying as pseudogene when repair is not possible). Genes that could not be transferred are catalogued with one of four reason classes. Main output: `refine.gff3`.
 
 **L2** uses a multi-species protein library to discover genes that L1 missed or that were horizontally transferred within the genus. [miniprot](https://github.com/lh3/miniprot) scans the whole genome without masking; hits overlapping L1 genes are silently dropped. The remaining candidates are classified using a SOG (Schizosaccharomyces orthogroup) table: each locus is assigned one of four relation labels (*non_reference_gene*, *missing_lift*, *intra_genus_HGT_from_\<sp\>*, *diverged_paralog_or_misannot*). HGT candidates pass a double identity gate (absolute floor + SOG-derived pairwise cutoff), and an ORF-completeness filter pushes fragment noise to the sidecar (a separate TSV for manual review). Main output: 1–12 high-confidence new genes per strain.
 
