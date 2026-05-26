@@ -31,23 +31,34 @@ flowchart TD
     end
 
     L2GFF[("l2_kept.gff3<br/>1–12 high-confidence<br/>new genes/strain")]
-    L2TSV[("l2_candidates.tsv<br/>all 4 relation classes")]
-    L2SC[("sidecar.tsv<br/>singleton_no_sog / low_conf_HGT /<br/>partial_no_stop / full_aln_no_stop /<br/>orf_too_short")]
 
-    NEXT["L3 (BRAKER4 + UniRef50)<br/>or merge_layers → final.gff3"]
+    subgraph L3["L3 — Ab initio HGT discovery (ANNEVO)"]
+        direction TB
+        L3A["<b>hard_mask_regions.py</b><br/>N-mask all L1∪L2 gene regions"]
+        L3B["<b>extract_residuals.py</b><br/>extract non-N intervals ≥ 1 kb"]
+        L3C["<b>ANNEVO</b> (Fungi model, CPU)<br/>ab initio gene prediction with introns"]
+        L3D["<b>remap + DIAMOND UniRef50</b><br/>coordinate remap → blastp"]
+        L3E["<b>Multi-layer filter</b><br/>• ≥ 200 aa protein + ≥ 200 aa alignment<br/>• exclude Schizo / TE / Metazoa hits<br/>• contamination: contig check + BAM coverage"]
+        L3F["<b>L2 rescue</b><br/>validate singleton_no_sog → non_reference_gene"]
+        L3A --> L3B --> L3C --> L3D --> L3E --> L3F
+    end
+
+    L3GFF[("l3_kept.gff3<br/>0–3 putative HGT/strain")]
+    MERGE["merge_layers.py → final.gff3"]
 
     IN --> L1
     L1 --> L1OUT
     L1OUT --> L2
     L2 --> L2GFF
-    L2 --> L2TSV
-    L2 --> L2SC
-    L2GFF --> NEXT
+    L2GFF --> L3
+    L3 --> L3GFF
+    L2GFF --> MERGE
+    L3GFF --> MERGE
 
     classDef io fill:#eef5ff,stroke:#3366aa,stroke-width:1px,color:#000
     classDef out fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,color:#000
     class IN,L1OUT io
-    class L2GFF,L2TSV,L2SC out
+    class L2GFF,L3GFF out
 ```
 
 **L1** transfers PomBase annotation gene-by-gene to the target strain, with
@@ -59,6 +70,12 @@ that were horizontally transferred within the genus. Only hits **not** overlappi
 L1 are kept; the SOG table + pairwise identity assign one of 4 relation labels,
 and an ORF-completeness filter pushes fragment noise to the sidecar. Main output:
 1–12 high-confidence new genes per strain.
+
+**L3** runs ANNEVO (pretrained Fungi DNN) on residual regions not covered by
+L1/L2, targeting extra-genus HGT. Hard-masks annotated regions, extracts ≥1 kb
+fragments, predicts genes ab initio (with introns), then filters by UniRef50
+(drop no-hit, exclude Schizo/TE/contamination). Also rescues L2 sidecar entries
+validated by ANNEVO. Main output: 0–3 putative HGT candidates per strain.
 
 ## Layout
 ```
@@ -73,61 +90,54 @@ FissionANNO/
       common.smk
       l1_lifton.smk
       l2_miniprot.smk
-      l3_braker4.smk
+      l3_annevo.smk
       merge.smk
-    scripts/                   # python helpers
-      lifton_gff3_refine.py    # in-tree copy
+    scripts/
+      lifton_gff3_refine.py
       build_sog_index.py
       build_unmapped_tsv.py
       l2_conflict_resolve.py
-      softmask_regions.py
-      run_braker4.py
+      hard_mask_regions.py
+      extract_residuals.py
+      remap_coordinates.py
+      l3_diamond_search.py
+      l2_rescue_from_l3.py
       l3_uniref50_filter.py
       merge_layers.py
       capture_versions.py
-    envs/
-      lifton.yaml
-      postprocess.yaml
   profiles/
     local/config.yaml          # 64-core single-machine profile
-  resources/                   # cached intermediate (built once)
 ```
 
 ## Status
-- 2026-05-22: scaffold + L1 refine fixes + SOG/unmapped scripts implemented
-- 2026-05-23: conda env installed at `/data/c/jiaguosong/conda_envs/fissionanno` (899 MB)
-- L2/L3/merge: rule wiring done; python scripts are placeholders (exit 2)
+- L1: verified end-to-end on 5 test strains (2026-05-23)
+- L2: conflict resolution v6, verified on 5 strains (2026-05-24)
+- L3: ANNEVO-based HGT discovery, verified on 5 strains (2026-05-26)
+- Merge: implemented, pending full integration test
 
 ## Setup
 
-Prerequisites: `micromamba` (or `mamba`) on PATH; `curl`, `tar`, `sed`.
+Prerequisites: `conda` on PATH.
 
 ```bash
 git clone <repo> FissionANNO && cd FissionANNO
-bash setup_env.sh                                                # default prefix
-# or:
-ENV_PREFIX=/path/to/your/envs/fissionanno bash setup_env.sh      # custom prefix
-conda activate /data/c/jiaguosong/conda_envs/fissionanno
+bash setup_env.sh
+export PATH="/data/c/jiaguosong/conda_envs/fissionanno/bin:$PATH"
 ```
 
-`setup_env.sh` is end-to-end reproducible: it neutralizes a stale
-`~/.condarc`, builds the patched `cigar` wheel (lifton transitive dep
-with broken upstream packaging), and installs lifton + pytest in the
-right order. Tested from a clean state on 2026-05-23.
-
-The repo is a single conda env. BRAKER4 is invoked as an *external*
-Snakemake workflow at `/data/c/jiaguosong/BRAKER4/` via subprocess — it
-is **not** installed into this env.
-
-## Next
-1. Run refine A1–A5 bug A/B test on 5 sample strains using existing `1.1_lifton_original_gff3` outputs.
-2. Implement `build_sog_index.py`, `build_unmapped_tsv.py`, then `l2_conflict_resolve.py`.
-3. Smoke-test L1 + L2 on the 5-strain manifest.
-4. Wire `run_braker4.py` against the `/data/c/jiaguosong/BRAKER4` workflow.
-5. Implement `l3_uniref50_filter.py` and `merge_layers.py`.
+ANNEVO requires a separate environment (CPU-only setup):
+```bash
+conda create -p /data/c/jiaguosong/conda_envs/annevo python=3.10 -y
+export PATH="/data/c/jiaguosong/conda_envs/annevo/bin:$PATH"
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install bcbio-gff h5py torchmetrics pandas numpy tqdm biopython
+git clone https://github.com/xjtu-omics/ANNEVO.git /data/c/jiaguosong/ANNEVO
+```
 
 ## Run
 ```bash
 cd /data/c/jiaguosong/FissionANNO
-snakemake --snakefile workflow/Snakefile --profile profiles/local -n   # dry run
+export PATH="/data/c/jiaguosong/conda_envs/fissionanno/bin:$PATH"
+snakemake --profile profiles/local -n          # dry run
+snakemake --profile profiles/local --cores 64  # full run
 ```
