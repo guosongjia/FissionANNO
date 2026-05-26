@@ -61,11 +61,11 @@ flowchart TD
 
 **L1** transfers the reference annotation gene-by-gene to the target strain, with
 small-scale start/stop codon repair; unmapped genes are bucketed into 4 reason
-classes. Main output: `refine.gff3` (~5k genes/strain).
+classes. Main output: `refine.gff3`.
 
 **L2** uses a multi-species protein library to discover genes that L1 missed or
 that were horizontally transferred within the genus. Only hits **not** overlapping
-L1 are kept; the SOG table + pairwise identity assign one of 4 relation labels,
+L1 are kept; the SOG (Schizosaccharomyces orthogroup) table + pairwise identity assign one of 4 relation labels,
 and an ORF-completeness filter pushes fragment noise to the sidecar (a separate
 TSV for manual review). Main output:
 1–12 high-confidence new genes per strain.
