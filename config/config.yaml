@@ -88,6 +88,6 @@ resources:
   l1_refine:    { threads: 1, mem_gb: 2 }
   l2_miniprot:  { threads: 8, mem_gb: 8 }
   l2_resolve:   { threads: 2, mem_gb: 4 }
-  l3_annevo:    { threads: 8, mem_gb: 16 }
+  l3_annevo:    { threads: 4, mem_gb: 16 }
   l3_uniref50:  { threads: 8, mem_gb: 32 }
   merge:        { threads: 2, mem_gb: 4 }

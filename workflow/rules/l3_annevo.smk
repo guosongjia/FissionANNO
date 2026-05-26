@@ -74,6 +74,7 @@ rule l3_annevo_predict:
             -p {output.h5} \
             -l {params.lineage} \
             --batch_size {params.batch_size} \
+            --num_workers {threads} \
             > {log} 2>&1
         """
 
