@@ -16,7 +16,7 @@ rule l3_hard_mask:
         l1     = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.lifton.gff3"),
         l2     = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept.gff3"),
     output:
-        masked = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.hardmasked.fasta"),
+        masked = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.hardmasked.fasta")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_hard_mask.log"),
     threads: 1
@@ -33,8 +33,8 @@ rule l3_extract_residuals:
     input:
         masked = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.hardmasked.fasta"),
     output:
-        fasta = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.fasta"),
-        maptsv = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.map.tsv"),
+        fasta = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.fasta")),
+        maptsv = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.map.tsv")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_extract_residuals.log"),
     params:
@@ -54,7 +54,7 @@ rule l3_annevo_predict:
     input:
         fasta = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.fasta"),
     output:
-        h5 = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_pred.h5"),
+        h5 = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_pred.h5")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_annevo_predict.log"),
     params:
@@ -83,7 +83,7 @@ rule l3_annevo_decode:
         fasta = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.fasta"),
         h5    = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_pred.h5"),
     output:
-        gff = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_raw.gff"),
+        gff = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_raw.gff")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_annevo_decode.log"),
     params:
