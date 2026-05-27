@@ -16,16 +16,16 @@ A pickle file containing a dict with keys:
   - "protein_to_sog": {protein_id: SOG_id}
   - "sog_to_proteins": {SOG_id: {species_full_name: [protein_id, ...]}}
   - "sog_to_category": {SOG_id: OG_category}
-  - "sog_lcon_max_id": {SOG_id: {other_sp_short: max_identity_float}}
+  - "sog_ref_max_id": {SOG_id: {other_sp_short: max_identity_float}}
   - "species": [species_full_name, ...]   # column order preserved
   - "source_path": str
   - "n_sogs": int
   - "n_proteins": int
 
 When --protein-fa is provided, pairwise global alignments are computed for
-each SOG between Lcon members and each other species' members. The maximum
+each SOG between reference species (ref) members and each other species' members. The maximum
 identity (matches / aligned_length incl. gaps) per (SOG, other_species) pair
-is stored in "sog_lcon_max_id".
+is stored in "sog_ref_max_id".
 """
 import argparse
 import logging
@@ -114,10 +114,10 @@ def load_protein_seqs(fa_path: str) -> Dict[str, str]:
     return seqs
 
 
-def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
-                          fa_path: str, lcon_full: str) -> Dict[str, Dict[str, float]]:
+def compute_ref_pairwise(sog_to_proteins: Dict, species: List[str],
+                          fa_path: str, ref_full: str) -> Dict[str, Dict[str, float]]:
     """For each SOG, compute max identity (matches / aligned_length incl gaps)
-    between every Lcon protein and every other-species protein. Identity definition
+    between every reference species protein and every other-species protein. Identity definition
     matches miniprot's Identity field for cross-comparability.
 
     Returns {SOG_id: {other_sp_short: max_identity}}.
@@ -125,7 +125,7 @@ def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
     from Bio.Align import PairwiseAligner, substitution_matrices
 
     full_to_short = {sp: sp.replace("Schizosaccharomyces_", "S_") for sp in species}
-    lcon_short = lcon_full.replace("Schizosaccharomyces_", "S_")
+    ref_short = ref_full.replace("Schizosaccharomyces_", "S_")
     seqs = load_protein_seqs(fa_path)
     logging.info(f"  loaded {len(seqs)} protein sequences from {fa_path}")
 
@@ -138,17 +138,17 @@ def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
     out: Dict[str, Dict[str, float]] = {}
     n_sogs_with_pair, n_alignments = 0, 0
     for sog_id, sp2pids in sog_to_proteins.items():
-        lcon_pids = sp2pids.get(lcon_full, [])
-        if not lcon_pids:
+        ref_pids = sp2pids.get(ref_full, [])
+        if not ref_pids:
             continue
         per_other: Dict[str, float] = {}
         for sp_full, pids in sp2pids.items():
-            if sp_full == lcon_full or not pids:
+            if sp_full == ref_full or not pids:
                 continue
             sp_short = full_to_short[sp_full]
             best = 0.0
-            for a in lcon_pids:
-                sa = seqs.get(f"{lcon_short}|{a}")
+            for a in ref_pids:
+                sa = seqs.get(f"{ref_short}|{a}")
                 if not sa:
                     continue
                 for b in pids:
@@ -185,7 +185,7 @@ def main():
     p.add_argument("--no-strict", action="store_true",
                    help="proceed even if rows have wrong column count (default: fail loud)")
     p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
-                   help="full species name of the reference (Lcon) in the SOG table")
+                   help="full species name of the reference species in the SOG table")
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
 
@@ -196,11 +196,11 @@ def main():
     logging.info(f"parsed {idx['n_sogs']} SOGs, {idx['n_proteins']} proteins, {len(idx['species'])} species")
 
     if args.protein_fa:
-        logging.info(f"computing Lcon pairwise identities from {args.protein_fa}")
-        idx["sog_lcon_max_id"] = compute_lcon_pairwise(
+        logging.info(f"computing reference pairwise identities from {args.protein_fa}")
+        idx["sog_ref_max_id"] = compute_ref_pairwise(
             idx["sog_to_proteins"], idx["species"], args.protein_fa, args.lcon_species)
     else:
-        idx["sog_lcon_max_id"] = {}
+        idx["sog_ref_max_id"] = {}
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, "wb") as fh:

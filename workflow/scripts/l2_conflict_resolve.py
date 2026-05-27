@@ -177,10 +177,10 @@ def sog_of_protein(protein: str, sog_idx: Dict) -> Optional[str]:
     return sog_idx["protein_to_sog"].get(protein)
 
 
-def classify_locus(locus_hits: List[Dict], lcon_present_in_og_m: bool,
+def classify_locus(locus_hits: List[Dict], ref_present_in_og_m: bool,
                    id_adv_pp: float, diverged_max_id: float,
                    og_m: str, sog_idx: Dict, short_to_full: Dict[str, str],
-                   lcon_short: str) -> Tuple[str, Dict]:
+                   ref_short: str) -> Tuple[str, Dict]:
     best_per_species: Dict[str, Dict] = {}
     for h in locus_hits:
         sp = h["src_species"]
@@ -189,43 +189,43 @@ def classify_locus(locus_hits: List[Dict], lcon_present_in_og_m: bool,
         if sp not in best_per_species or h["identity"] > best_per_species[sp]["identity"]:
             best_per_species[sp] = h
 
-    lcon_id = best_per_species[lcon_short]["identity"] if lcon_short in best_per_species else None
-    others = {sp: h["identity"] for sp, h in best_per_species.items() if sp != lcon_short}
+    ref_id = best_per_species[ref_short]["identity"] if ref_short in best_per_species else None
+    others = {sp: h["identity"] for sp, h in best_per_species.items() if sp != ref_short}
 
-    if not lcon_present_in_og_m:
+    if not ref_present_in_og_m:
         relation = "non_reference_gene"
-        ev = {"lcon_id": lcon_id,
+        ev = {"ref_id": ref_id,
               "best_other_id": max(others.values()) if others else None,
               "best_other_sp": max(others, key=others.get) if others else None}
-    elif lcon_id is None:
+    elif ref_id is None:
         if others:
             best_sp = max(others, key=others.get)
             relation = f"intra_genus_HGT_from_{best_sp}"
-            ev = {"lcon_id": None, "best_other_id": others[best_sp], "best_other_sp": best_sp}
+            ev = {"ref_id": None, "best_other_id": others[best_sp], "best_other_sp": best_sp}
         else:
             relation = "diverged_paralog_or_misannot"
-            ev = {"lcon_id": None, "best_other_id": None, "best_other_sp": None}
+            ev = {"ref_id": None, "best_other_id": None, "best_other_sp": None}
     elif not others:
         relation = "missing_lift"
-        ev = {"lcon_id": lcon_id, "best_other_id": None, "best_other_sp": None}
+        ev = {"ref_id": ref_id, "best_other_id": None, "best_other_sp": None}
     else:
         best_sp = max(others, key=others.get)
         best_other_id = others[best_sp]
-        advantage_pp = (best_other_id - lcon_id) * 100.0
-        if max(lcon_id, best_other_id) < diverged_max_id:
+        advantage_pp = (best_other_id - ref_id) * 100.0
+        if max(ref_id, best_other_id) < diverged_max_id:
             relation = "diverged_paralog_or_misannot"
-            ev = {"lcon_id": lcon_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
+            ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
         elif advantage_pp >= id_adv_pp:
             relation = f"intra_genus_HGT_from_{best_sp}"
-            ev = {"lcon_id": lcon_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
+            ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
         else:
             relation = "missing_lift"
-            ev = {"lcon_id": lcon_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
+            ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
 
-    # Pairwise cutoff gate: HGT requires candidate identity > max(Lcon × donor) in SOG
+    # Pairwise cutoff gate: HGT requires candidate identity > max(ref × donor) in SOG
     if relation.startswith("intra_genus_HGT"):
         best_sp = ev.get("best_other_sp")
-        sog_pw = sog_idx.get("sog_lcon_max_id", {}).get(og_m, {})
+        sog_pw = sog_idx.get("sog_ref_max_id", {}).get(og_m, {})
         cutoff = sog_pw.get(best_sp)
         candidate_id = ev.get("best_other_id") or 0.0
         if cutoff is None or candidate_id <= cutoff:
@@ -339,7 +339,7 @@ def main():
     p.add_argument("--min-identity", type=float, default=0.3)
     p.add_argument("--hgt-min-identity", type=float, default=0.9)
     p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
-                   help="full species name of the reference (Lcon) in the SOG table")
+                   help="full species name of the reference species in the SOG table")
     p.add_argument("--protein-fa", required=True,
                    help="combined 9-species protein fasta (for query lengths)")
     p.add_argument("--orf-min-coverage", type=float, default=0.95,
@@ -350,8 +350,8 @@ def main():
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
 
-    lcon_full = args.lcon_species
-    lcon_short = lcon_full.replace("Schizosaccharomyces_", "S_")
+    ref_full = args.lcon_species
+    ref_short = ref_full.replace("Schizosaccharomyces_", "S_")
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO),
                         format="%(levelname)s: %(message)s")
@@ -369,9 +369,9 @@ def main():
         sog_idx = pickle.load(fh)
     logging.info(f"loaded SOG index: {sog_idx['n_sogs']} SOGs")
 
-    sog_lcon_members: Dict[str, Set[str]] = {}
+    sog_ref_members: Dict[str, Set[str]] = {}
     for sog_id, sp2pids in sog_idx["sog_to_proteins"].items():
-        sog_lcon_members[sog_id] = set(sp2pids.get(lcon_full, []))
+        sog_ref_members[sog_id] = set(sp2pids.get(ref_full, []))
 
     short_to_full = {sp.replace("Schizosaccharomyces_", "S_"): sp
                      for sp in sog_idx["species"]}
@@ -431,9 +431,9 @@ def main():
             ])
             continue
 
-        lcon_present = bool(sog_lcon_members.get(og_m, set()))
-        relation, ev = classify_locus(locus, lcon_present, args.id_adv_pp, args.diverged_max_id,
-                                      og_m, sog_idx, short_to_full, lcon_short)
+        ref_present = bool(sog_ref_members.get(og_m, set()))
+        relation, ev = classify_locus(locus, ref_present, args.id_adv_pp, args.diverged_max_id,
+                                      og_m, sog_idx, short_to_full, ref_short)
         counters[relation] += 1
 
         # HGT identity gate
@@ -447,14 +447,14 @@ def main():
             ])
             continue
 
-        lcon_id_str = f"{ev['lcon_id']:.4f}" if ev.get("lcon_id") is not None else "NA"
+        ref_id_str = f"{ev['ref_id']:.4f}" if ev.get("ref_id") is not None else "NA"
         best_other_id_str = f"{ev['best_other_id']:.4f}" if ev.get("best_other_id") is not None else "NA"
 
         tags = OrderedDict([
             ("source", "miniprot_L2"),
             ("relation", relation),
             ("SOG_id", og_m),
-            ("Lcon_id", lcon_id_str),
+            ("ref_id", ref_id_str),
             ("best_other_id", best_other_id_str),
             ("best_other_sp", ev.get("best_other_sp") or "."),
             ("adjacent_L", adj_l or "."),
@@ -465,7 +465,7 @@ def main():
             args.sample, locus_coord, relation,
             og_m, og_m_source or ".",
             f"{best_hit['identity']:.4f}", str(best_hit["aln_aa"]),
-            lcon_id_str, best_other_id_str, ev.get("best_other_sp") or ".",
+            ref_id_str, best_other_id_str, ev.get("best_other_sp") or ".",
             adj_l or ".",
         ])
 
@@ -523,7 +523,7 @@ def main():
     with open(args.out_tsv, "w") as out:
         out.write("\t".join([
             "sample", "locus", "relation", "SOG_id", "best_protein",
-            "identity", "aln_aa", "Lcon_id", "best_other_id", "best_other_sp",
+            "identity", "aln_aa", "ref_id", "best_other_id", "best_other_sp",
             "adjacent_L",
         ]) + "\n")
         for row in tsv_rows:

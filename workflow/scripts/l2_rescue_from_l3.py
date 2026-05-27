@@ -200,7 +200,7 @@ def main():
                 f";sog_status=no_sog"
                 f";validated_by=annevo_L3"
                 f";SOG_id=NA"
-                f";Lcon_id=NA"
+                f";ref_id=NA"
                 f";best_other_id={best_m['identity']:.4f}"
                 f";best_other_sp={src_species}"
                 f";source=miniprot_L2"
