@@ -2,6 +2,8 @@
 
 A Snakemake pipeline for population-scale genome annotation in haploid fission yeasts (*Schizosaccharomyces*).
 
+![Pipeline Overview](docs/pipeline_overview.png)
+
 ## Pipeline Overview
 
 ```mermaid
