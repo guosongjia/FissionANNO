@@ -179,7 +179,8 @@ def sog_of_protein(protein: str, sog_idx: Dict) -> Optional[str]:
 
 def classify_locus(locus_hits: List[Dict], lcon_present_in_og_m: bool,
                    id_adv_pp: float, diverged_max_id: float,
-                   og_m: str, sog_idx: Dict, short_to_full: Dict[str, str]) -> Tuple[str, Dict]:
+                   og_m: str, sog_idx: Dict, short_to_full: Dict[str, str],
+                   lcon_short: str) -> Tuple[str, Dict]:
     best_per_species: Dict[str, Dict] = {}
     for h in locus_hits:
         sp = h["src_species"]
@@ -188,8 +189,8 @@ def classify_locus(locus_hits: List[Dict], lcon_present_in_og_m: bool,
         if sp not in best_per_species or h["identity"] > best_per_species[sp]["identity"]:
             best_per_species[sp] = h
 
-    lcon_id = best_per_species["S_pombe"]["identity"] if "S_pombe" in best_per_species else None
-    others = {sp: h["identity"] for sp, h in best_per_species.items() if sp != "S_pombe"}
+    lcon_id = best_per_species[lcon_short]["identity"] if lcon_short in best_per_species else None
+    others = {sp: h["identity"] for sp, h in best_per_species.items() if sp != lcon_short}
 
     if not lcon_present_in_og_m:
         relation = "non_reference_gene"
@@ -337,6 +338,8 @@ def main():
     p.add_argument("--min-aln-aa", type=int, default=50)
     p.add_argument("--min-identity", type=float, default=0.3)
     p.add_argument("--hgt-min-identity", type=float, default=0.9)
+    p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
+                   help="full species name of the reference (Lcon) in the SOG table")
     p.add_argument("--protein-fa", required=True,
                    help="combined 9-species protein fasta (for query lengths)")
     p.add_argument("--orf-min-coverage", type=float, default=0.95,
@@ -346,6 +349,9 @@ def main():
     p.add_argument("--out-sidecar", required=True)
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
+
+    lcon_full = args.lcon_species
+    lcon_short = lcon_full.replace("Schizosaccharomyces_", "S_")
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO),
                         format="%(levelname)s: %(message)s")
@@ -365,7 +371,7 @@ def main():
 
     sog_lcon_members: Dict[str, Set[str]] = {}
     for sog_id, sp2pids in sog_idx["sog_to_proteins"].items():
-        sog_lcon_members[sog_id] = set(sp2pids.get("Schizosaccharomyces_pombe", []))
+        sog_lcon_members[sog_id] = set(sp2pids.get(lcon_full, []))
 
     short_to_full = {sp.replace("Schizosaccharomyces_", "S_"): sp
                      for sp in sog_idx["species"]}
@@ -427,7 +433,7 @@ def main():
 
         lcon_present = bool(sog_lcon_members.get(og_m, set()))
         relation, ev = classify_locus(locus, lcon_present, args.id_adv_pp, args.diverged_max_id,
-                                      og_m, sog_idx, short_to_full)
+                                      og_m, sog_idx, short_to_full, lcon_short)
         counters[relation] += 1
 
         # HGT identity gate

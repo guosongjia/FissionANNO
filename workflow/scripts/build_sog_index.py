@@ -115,7 +115,7 @@ def load_protein_seqs(fa_path: str) -> Dict[str, str]:
 
 
 def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
-                          fa_path: str) -> Dict[str, Dict[str, float]]:
+                          fa_path: str, lcon_full: str) -> Dict[str, Dict[str, float]]:
     """For each SOG, compute max identity (matches / aligned_length incl gaps)
     between every Lcon protein and every other-species protein. Identity definition
     matches miniprot's Identity field for cross-comparability.
@@ -125,6 +125,7 @@ def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
     from Bio.Align import PairwiseAligner, substitution_matrices
 
     full_to_short = {sp: sp.replace("Schizosaccharomyces_", "S_") for sp in species}
+    lcon_short = lcon_full.replace("Schizosaccharomyces_", "S_")
     seqs = load_protein_seqs(fa_path)
     logging.info(f"  loaded {len(seqs)} protein sequences from {fa_path}")
 
@@ -137,17 +138,17 @@ def compute_lcon_pairwise(sog_to_proteins: Dict, species: List[str],
     out: Dict[str, Dict[str, float]] = {}
     n_sogs_with_pair, n_alignments = 0, 0
     for sog_id, sp2pids in sog_to_proteins.items():
-        lcon_pids = sp2pids.get("Schizosaccharomyces_pombe", [])
+        lcon_pids = sp2pids.get(lcon_full, [])
         if not lcon_pids:
             continue
         per_other: Dict[str, float] = {}
         for sp_full, pids in sp2pids.items():
-            if sp_full == "Schizosaccharomyces_pombe" or not pids:
+            if sp_full == lcon_full or not pids:
                 continue
             sp_short = full_to_short[sp_full]
             best = 0.0
             for a in lcon_pids:
-                sa = seqs.get(f"S_pombe|{a}")
+                sa = seqs.get(f"{lcon_short}|{a}")
                 if not sa:
                     continue
                 for b in pids:
@@ -183,6 +184,8 @@ def main():
     p.add_argument("--output", required=True, help="output pickle path")
     p.add_argument("--no-strict", action="store_true",
                    help="proceed even if rows have wrong column count (default: fail loud)")
+    p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
+                   help="full species name of the reference (Lcon) in the SOG table")
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
 
@@ -195,7 +198,7 @@ def main():
     if args.protein_fa:
         logging.info(f"computing Lcon pairwise identities from {args.protein_fa}")
         idx["sog_lcon_max_id"] = compute_lcon_pairwise(
-            idx["sog_to_proteins"], idx["species"], args.protein_fa)
+            idx["sog_to_proteins"], idx["species"], args.protein_fa, args.lcon_species)
     else:
         idx["sog_lcon_max_id"] = {}
 

@@ -50,6 +50,7 @@ miniprot:
 sog:
   path: "/data/a/jiaguosong/jiaguosong/reference_genome_panel/nine_representative_strains_related/260511_SOG_updates_and_related_analysis/1_SOG_table_update/SOG_table.260511.updated2.tsv"
   pombe_column: "Schizosaccharomyces_pombe"
+  lcon_species: "Schizosaccharomyces_pombe"
 
 # ----- L1 vs L2 conflict resolution -----
 conflict:
