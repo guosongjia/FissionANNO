@@ -1,0 +1,79 @@
+digraph FissionANNO {
+    graph [rankdir=LR, fontname="Helvetica", fontsize=12,
+           bgcolor="white", pad=0.5, nodesep=0.2, ranksep=0.45,
+           splines=polyline]
+    node  [fontname="Helvetica", fontsize=11, style="filled,rounded",
+           shape=box, margin="0.18,0.10", width=2.4]
+    edge  [fontname="Helvetica", fontsize=9, color="#555555", minlen=1]
+
+    // ── input ────────────────────────────────────────────────────────
+    node [fillcolor="#dce8f8" color="#3366aa"]
+    IN [label="Input\ngenome FASTA\n+ reference annotation" width=1.9]
+
+    // ── L1 nodes ─────────────────────────────────────────────────────
+    node [fillcolor="#fff8e1" color="#b8860b"]
+    L1A [label="lifton\nreference transfer"]
+    L1B [label="lifton_gff3_refine\nORF repair / pseudogene"]
+    L1C [label="build_unmapped_tsv\ncatalogue failed transfers"]
+
+    // ── L1 output ────────────────────────────────────────────────────
+    node [fillcolor="#e8f0fb" color="#3366aa" shape=cylinder width=1.9]
+    L1OUT [label="L1/refine.gff3"]
+
+    // ── L2 nodes ─────────────────────────────────────────────────────
+    node [fillcolor="#e8f5e9" color="#2e7d32" shape=box width=2.4]
+    L2A [label="miniprot\n9-species whole-genome scan"]
+    L2B [label="Pre-filter\noverlap · length · identity"]
+    L2C [label="SOG classification\nnon_ref · missing_lift · HGT · paralog"]
+    L2D [label="HGT double gate\nSOG pairwise max + identity ≥ 0.9"]
+    L2E [label="ORF completeness filter\nstop codon · CDS/query ≥ 0.95"]
+
+    // ── L2 output ────────────────────────────────────────────────────
+    node [fillcolor="#e8f0fb" color="#3366aa" shape=cylinder width=1.9]
+    L2GFF [label="l2_kept.gff3"]
+
+    // ── L3 nodes ─────────────────────────────────────────────────────
+    node [fillcolor="#fce4ec" color="#880e4f" shape=box width=2.4]
+    L3A [label="Hard-mask + extract residuals\nN-mask L1∪L2 · intervals ≥ 1 kb"]
+    L3C [label="ANNEVO (Fungi model)\nab initio prediction"]
+    L3D [label="UniRef50 annotation & HGT filter\nexclude Schizo / TE / Metazoa"]
+    L3E [label="L2 rescue\nsingleton_no_sog → non_reference_gene"]
+
+    // ── L3 output ────────────────────────────────────────────────────
+    node [fillcolor="#e8f0fb" color="#3366aa" shape=cylinder width=1.9]
+    L3GFF [label="l3_kept.gff3"]
+
+    // ── Merge nodes ──────────────────────────────────────────────────
+    node [fillcolor="#ede7f6" color="#4527a0" shape=box width=2.4]
+    MGA [label="merge_layers\nL1 + L2 + L3 · provenance tags"]
+    MGB [label="extract_proteins\nCDS → gzipped protein FASTA"]
+
+    // ── final output ─────────────────────────────────────────────────
+    node [fillcolor="#dce8f8" color="#3366aa" shape=cylinder width=1.9]
+    FINAL [label="final.gff3\n+ proteins.fa.gz"]
+
+    // ── rank groups (force vertical stacking per column) ─────────────
+    { rank=same; L1A; L1B; L1C }
+    { rank=same; L2A; L2B; L2C; L2D; L2E }
+    { rank=same; L3A; L3C; L3D; L3E }
+    { rank=same; MGA; MGB }
+
+    // ── intra-layer edges ────────────────────────────────────────────
+    L1A -> L1B -> L1C
+    L2A -> L2B -> L2C -> L2D -> L2E
+    L3A -> L3C -> L3D -> L3E
+    MGA -> MGB
+
+    // ── inter-layer edges ────────────────────────────────────────────
+    IN    -> L1A
+    L1C   -> L1OUT
+    L1OUT -> L2A
+    L2E   -> L2GFF
+    L2GFF -> L3A
+    L2E   -> L3E [style=dashed color="#888888" label="sidecar"]
+    L3E   -> L3GFF
+    L1OUT -> MGA
+    L2GFF -> MGA
+    L3GFF -> MGA
+    MGB   -> FINAL
+}
