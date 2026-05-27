@@ -33,6 +33,8 @@ rule all:
     input:
         expand(os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),
                sample=SAMPLES),
+        expand(os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.proteins.fa.gz"),
+               sample=SAMPLES),
         os.path.join(OUTDIR, "unmapped_summary.tsv"),
         os.path.join(OUTDIR, "versions.tsv"),
 

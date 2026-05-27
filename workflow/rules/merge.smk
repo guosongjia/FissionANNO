@@ -12,11 +12,31 @@ rule merge_per_strain:
     threads: lambda w: config["resources"]["merge"]["threads"]
     shell:
         r"""
+        mkdir -p $(dirname {output.gff})
         python workflow/scripts/merge_layers.py \
             --sample {wildcards.sample} \
             --l1 {input.l1} \
             --l2 {input.l2} \
             --l3 {input.l3} \
             --output {output.gff} \
+            > {log} 2>&1
+        """
+
+rule merge_extract_proteins:
+    input:
+        gff    = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),
+        genome = lambda w: SAMPLE_FASTA[w.sample],
+    output:
+        fa = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.proteins.fa.gz"),
+    log:
+        os.path.join(OUTDIR, "logs", "{sample}", "merge_extract_proteins.log"),
+    threads: 1
+    shell:
+        r"""
+        python workflow/scripts/extract_proteins.py \
+            --gff {input.gff} \
+            --genome {input.genome} \
+            --sample {wildcards.sample} \
+            --output {output.fa} \
             > {log} 2>&1
         """
