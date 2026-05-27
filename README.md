@@ -56,6 +56,7 @@ flowchart TD
     L1OUT --> L2
     L2 --> L2GFF
     L2GFF --> L3
+    L2E -.->|sidecar| L3E
     L3 --> L3GFF
     L1OUT --> MG
     L2GFF --> MG
