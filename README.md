@@ -35,10 +35,9 @@ flowchart TD
         L3A["<b>hard_mask_regions.py</b><br/>N-mask all L1∪L2 gene regions"]
         L3B["<b>extract_residuals.py</b><br/>extract non-N intervals ≥ 1 kb"]
         L3C["<b>ANNEVO</b> (Fungi model, CPU)<br/>ab initio gene prediction with introns"]
-        L3D["<b>remap + DIAMOND UniRef50</b><br/>coordinate remap → blastp"]
-        L3E["<b>Multi-layer filter</b><br/>• ≥ 200 aa protein + ≥ 200 aa alignment<br/>• exclude Schizo / TE / Metazoa hits<br/>• contamination: contig check + BAM coverage"]
-        L3F["<b>L2 rescue</b><br/>validate singleton_no_sog → non_reference_gene"]
-        L3A --> L3B --> L3C --> L3D --> L3E --> L3F
+        L3D["<b>UniRef50 annotation &amp; HGT filter</b><br/>DIAMOND blastp → exclude Schizo / TE / Metazoa<br/>contamination check: contig context + BAM coverage"]
+        L3E["<b>L2 rescue</b><br/>validate singleton_no_sog → non_reference_gene"]
+        L3A --> L3B --> L3C --> L3D --> L3E
     end
 
     L3GFF[("l3_kept.gff3<br/>putative extra-genus HGT<br/>+ L2 rescued genes")]
