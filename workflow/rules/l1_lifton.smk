@@ -50,6 +50,8 @@ rule l1_lifton:
             mv lifton_output ../{wildcards.sample}.lifton_output
         fi
         touch {output.outdir_tag}
+        # Clean up _work (minimap2 index + symlinks, no longer needed)
+        cd - && rm -rf {params.workdir}
         """
 
 rule l1_refine:
@@ -111,6 +113,7 @@ rule l1_score_nonhealthy:
             --score {OUTDIR}/results/{wildcards.sample}/L1/{wildcards.sample}.lifton_output/score.txt \
             --output {output.tsv} \
             > {log} 2>&1
+        rm -rf {OUTDIR}/results/{wildcards.sample}/L1/{wildcards.sample}.lifton_output
         """
 
 rule unmapped_summary:

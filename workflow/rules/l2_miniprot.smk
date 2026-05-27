@@ -5,7 +5,7 @@ rule l2_miniprot:
         target = lambda w: SAMPLE_FASTA[w.sample],
         proteins = os.path.join(OUTDIR, "shared", "combined_9sp.protein.fa"),
     output:
-        gff = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.miniprot.gff3"),
+        gff = temp(os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.miniprot.gff3")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l2_miniprot.log"),
     threads: lambda w: config["resources"]["l2_miniprot"]["threads"]

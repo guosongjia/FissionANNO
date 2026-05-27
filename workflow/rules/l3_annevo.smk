@@ -107,7 +107,7 @@ rule l3_remap:
         gff    = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_raw.gff"),
         maptsv = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.map.tsv"),
     output:
-        gff = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_remapped.gff3"),
+        gff = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_remapped.gff3")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_remap.log"),
     threads: 1
