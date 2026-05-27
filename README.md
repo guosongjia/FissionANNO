@@ -28,7 +28,7 @@ flowchart TD
         L2A --> L2B --> L2C --> L2D --> L2E
     end
 
-    L2GFF[("l2_kept.gff3<br/>1–12 high-confidence<br/>new genes/strain")]
+    L2GFF[("l2_kept.gff3<br/>high-confidence new genes<br/>(non_ref / missing_lift / HGT)")]
 
     subgraph L3["L3 — Ab initio HGT discovery (ANNEVO)"]
         direction TB
@@ -41,7 +41,7 @@ flowchart TD
         L3A --> L3B --> L3C --> L3D --> L3E --> L3F
     end
 
-    L3GFF[("l3_kept.gff3<br/>0–3 putative HGT/strain")]
+    L3GFF[("l3_kept.gff3<br/>putative extra-genus HGT<br/>+ L2 rescued genes")]
 
     subgraph MG["Merge"]
         direction TB
