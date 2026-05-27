@@ -178,7 +178,7 @@ def sog_of_protein(protein: str, sog_idx: Dict) -> Optional[str]:
 
 
 def classify_locus(locus_hits: List[Dict], ref_present_in_og_m: bool,
-                   id_adv_pp: float, diverged_max_id: float,
+                   diverged_max_id: float,
                    og_m: str, sog_idx: Dict, short_to_full: Dict[str, str],
                    ref_short: str) -> Tuple[str, Dict]:
     best_per_species: Dict[str, Dict] = {}
@@ -211,15 +211,11 @@ def classify_locus(locus_hits: List[Dict], ref_present_in_og_m: bool,
     else:
         best_sp = max(others, key=others.get)
         best_other_id = others[best_sp]
-        advantage_pp = (best_other_id - ref_id) * 100.0
         if max(ref_id, best_other_id) < diverged_max_id:
             relation = "diverged_paralog_or_misannot"
             ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
-        elif advantage_pp >= id_adv_pp:
-            relation = f"intra_genus_HGT_from_{best_sp}"
-            ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
         else:
-            relation = "missing_lift"
+            relation = f"intra_genus_HGT_from_{best_sp}"
             ev = {"ref_id": ref_id, "best_other_id": best_other_id, "best_other_sp": best_sp}
 
     # Pairwise cutoff gate: HGT requires candidate identity > max(ref × donor) in SOG
@@ -332,7 +328,6 @@ def main():
     p.add_argument("--l2-gff", required=True)
     p.add_argument("--sog-index", required=True)
     p.add_argument("--overlap-min", type=float, required=True)
-    p.add_argument("--id-adv-pp", type=float, required=True)
     p.add_argument("--diverged-max-id", type=float, required=True)
     p.add_argument("--adjacent-max-bp", type=int, required=True)
     p.add_argument("--min-aln-aa", type=int, default=50)
@@ -432,7 +427,7 @@ def main():
             continue
 
         ref_present = bool(sog_ref_members.get(og_m, set()))
-        relation, ev = classify_locus(locus, ref_present, args.id_adv_pp, args.diverged_max_id,
+        relation, ev = classify_locus(locus, ref_present, args.diverged_max_id,
                                       og_m, sog_idx, short_to_full, ref_short)
         counters[relation] += 1
 

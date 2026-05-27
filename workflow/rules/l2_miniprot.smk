@@ -35,7 +35,6 @@ rule l2_conflict_resolve:
         os.path.join(OUTDIR, "logs", "{sample}", "l2_resolve.log"),
     params:
         overlap_min   = config["conflict"]["overlap_reciprocal_min"],
-        id_adv_pp     = config["conflict"]["hgt_identity_advantage_pp"],
         hgt_min_id    = config["conflict"]["hgt_min_identity"],
         diverged_max  = config["conflict"]["diverged_paralog_max_identity"],
         adjacent_max  = config["conflict"]["adjacent_max_distance_bp"],
@@ -54,7 +53,6 @@ rule l2_conflict_resolve:
             --sog-index {input.sog_idx} \
             --protein-fa {input.proteins} \
             --overlap-min {params.overlap_min} \
-            --id-adv-pp {params.id_adv_pp} \
             --hgt-min-identity {params.hgt_min_id} \
             --diverged-max-id {params.diverged_max} \
             --adjacent-max-bp {params.adjacent_max} \
