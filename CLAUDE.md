@@ -219,3 +219,14 @@ DY47073、DY46687、DY44518-zxr、DY42495-zxr、DY39827。开发期所有 rule �
   - **生物学结论**：5 株中检测到的 `intra_genus_HGT_from_S_pombe_CN` 本质上是 S. pombe 群体内谱系分化（目标菌株携带 CN-like 拷贝而非 Lcon-like 拷贝），不是真正的跨物种 HGT。
   - **改动文件**（5 个，未 commit）：`l2_conflict_resolve.py`、`l2_miniprot.smk`、`config.yaml`、`build_sog_index.py`、`common.smk`。
   - **L2 开发完成**，待用户决定 commit 时机。
+- 2026-05-25 ~ 2026-05-27：L3 开发完成（ANNEVO 替代 BRAKER4）。关键决策与结果：
+  - **BRAKER4 放弃原因**：S. pombe 基因密度极高（~60% 编码区），GeneMark-ES `min_contig=10000` 无法在碎片化残余区间训练；soft-mask 后 DY47073 预测 0 基因，DY39827 预测 7698 基因（遍布全基因组，mask_penalty=0.03 不起作用）。
+  - **ANNEVO 选择原因**：预训练 Fungi 模型，推理不依赖目标基因组训练，支持碎片化基因组，CPU-only 可用，~16 min/株（4 线程）。
+  - **L3 流程**：hard-mask L1∪L2 → 提取 ≥1 kb 残余区间 → ANNEVO 预测+解码 → 坐标回映射 → DIAMOND UniRef50 → 多层过滤 → L2 rescue。
+  - **过滤链**：≥200 aa 蛋白 + ≥200 aa 比对；排除 Schizo（`_SCHPO|_SCHCR|_SCHJP` 等）；排除 TE（transposon/transposase/RNA-directed DNA polymerase 等）；排除 Metazoa/Viridiplantae（Tax 字段 + SwissProt 5 字母物种代码双重检验）+ BAM coverage 验证（< 0.2× assembly median → 丢弃）。
+  - **L2 rescue**：L3 ANNEVO 独立验证 L2 sidecar 中 `singleton_no_sog` 条目（miniprot identity ≥ 0.9 + DIAMOND hit），救回为 `non_reference_gene;sog_status=no_sog;validated_by=annevo_L3`。
+  - **5 株验证结果**：DY47073（≈Lcon）= 0 HGT；其余 4 株 0–3 个 putative 属外 HGT/株（Chaetothyriales 在 3 株中重复出现，可能同一 HGT 事件）；L2 rescued 0–2 个/株。
+  - **基因 ID 命名**：`L3G_{sample}_{n:05d}` / `L3T_{sample}_{n:05d}`，与 L2 命名规范一致。
+  - **存储优化**：中间文件标 `temp()`（annevo_pred.h5、hardmasked.fasta 等）+ L1 _work/ 和 lifton_output/ 运行后清理；840 株最终产物约 11 GB（vs 未清理 310 GB）。
+  - **性能估算**（840 株，64 核）：~30 小时，瓶颈为 ANNEVO 预测（16 并行）。
+  - **commit**：`dc39d4e`（L3 主体）、`a1e1e4b`（并行优化）、`ce6eba3`（中间文件清理）、`c31cdee`（基因 ID 命名）。
