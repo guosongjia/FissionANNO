@@ -10,9 +10,9 @@ flowchart TD
 
     subgraph L1["L1 — Reference transfer"]
         direction TB
-        L1A["<b>lifton</b><br/>-sc 0.95  -copies<br/>-polish  -infer-genes"]
-        L1B["<b>lifton_gff3_refine.py</b><br/>repair invalid ORFs:<br/>• missing stop → truncate to inframe stop (last 5%)<br/>&nbsp;&nbsp;&nbsp;or extend downstream<br/>• missing start → scan ≤ 300 bp upstream for ATG<br/>• un-refinable → pseudogene"]
-        L1C["<b>build_unmapped_tsv.py</b><br/>4 reason classes:<br/>lifton_unmapped / refine_pseudogene /<br/>refine_truncated_at_contig_end /<br/>refine_frame_disrupted"]
+        L1A["<b>lifton</b><br/>-sc 0.95 · -copies · -polish · -infer-genes"]
+        L1B["<b>lifton_gff3_refine.py</b><br/>missing stop → truncate / extend downstream<br/>missing start → scan ≤ 300 bp upstream<br/>un-refinable → pseudogene"]
+        L1C["<b>build_unmapped_tsv.py</b><br/>lifton_unmapped · refine_pseudogene<br/>refine_truncated_at_contig_end · refine_frame_disrupted"]
         L1A --> L1B --> L1C
     end
 
@@ -20,32 +20,31 @@ flowchart TD
 
     subgraph L2["L2 — Cross-species protein scan & SOG conflict resolution"]
         direction TB
-        L2A["<b>miniprot</b> whole-genome scan<br/>query = 9 species protein FASTA<br/>(no masking)"]
-        L2B["<b>① Pre-filter</b><br/>drop if any of:<br/>• aln &lt; 50 aa<br/>• identity &lt; 0.3<br/>• overlap with L1 gene ≥ 50%"]
-        L2C["<b>② Locus collapse + SOG classification</b><br/>4 relation labels:<br/>• non_reference_gene (absent from reference)<br/>• missing_lift (in reference but lifton failed)<br/>• intra_genus_HGT_from_&lt;sp&gt; (closer to donor than reference)<br/>• diverged_paralog_or_misannot (ambiguous)"]
-        L2D["<b>③ HGT double gate</b> (HGT candidates only)<br/>candidate_id &gt; SOG ref×donor pairwise max<br/>(else demote → non_reference_gene)<br/>candidate_id ≥ 0.9 (else → sidecar)"]
-        L2E["<b>④ ORF completeness filter</b><br/>require intact ORF<br/>CDS aa / query aa ≥ 0.95"]
+        L2A["<b>miniprot</b><br/>whole-genome scan · 9-species protein library"]
+        L2B["<b>① Pre-filter</b><br/>aln ≥ 50 aa · identity ≥ 0.3<br/>drop if overlap L1 ≥ 50%"]
+        L2C["<b>② SOG classification</b><br/>non_reference_gene · missing_lift<br/>intra_genus_HGT_from_&lt;sp&gt; · diverged_paralog"]
+        L2D["<b>③ HGT double gate</b><br/>identity &gt; SOG pairwise max AND ≥ 0.9<br/>(else demote or → sidecar)"]
+        L2E["<b>④ ORF completeness filter</b><br/>intact stop codon · CDS/query aa ≥ 0.95"]
         L2A --> L2B --> L2C --> L2D --> L2E
     end
 
-    L2GFF[("l2_kept.gff3<br/>high-confidence new genes<br/>(non_ref / missing_lift / HGT)")]
+    L2GFF[("l2_kept.gff3<br/>high-confidence new genes<br/>non_ref · missing_lift · HGT")]
 
     subgraph L3["L3 — Ab initio HGT discovery (ANNEVO)"]
         direction TB
-        L3A["<b>hard_mask_regions.py</b><br/>N-mask all L1∪L2 gene regions"]
-        L3B["<b>extract_residuals.py</b><br/>extract non-N intervals ≥ 1 kb"]
-        L3C["<b>ANNEVO</b> (Fungi model, CPU)<br/>ab initio gene prediction with introns"]
-        L3D["<b>UniRef50 annotation &amp; HGT filter</b><br/>DIAMOND blastp → exclude Schizo / TE / Metazoa<br/>contamination check: contig context + BAM coverage"]
-        L3E["<b>L2 rescue</b><br/>validate singleton_no_sog → non_reference_gene"]
-        L3A --> L3B --> L3C --> L3D --> L3E
+        L3A["<b>hard_mask + extract_residuals</b><br/>N-mask L1∪L2 · extract intervals ≥ 1 kb"]
+        L3C["<b>ANNEVO</b> (Fungi model, CPU)<br/>ab initio prediction with introns"]
+        L3D["<b>UniRef50 annotation &amp; HGT filter</b><br/>DIAMOND blastp · exclude Schizo / TE / Metazoa<br/>contig context + BAM coverage check"]
+        L3E["<b>L2 rescue</b><br/>singleton_no_sog + ANNEVO overlap<br/>→ non_reference_gene"]
+        L3A --> L3C --> L3D --> L3E
     end
 
     L3GFF[("l3_kept.gff3<br/>putative extra-genus HGT<br/>+ L2 rescued genes")]
 
     subgraph MG["Merge"]
         direction TB
-        MGA["<b>merge_layers.py</b><br/>L1 + L2 + L3 → sorted GFF3<br/>source= provenance tags"]
-        MGB["<b>extract_proteins.py</b><br/>CDS → translated proteins<br/>gzipped FASTA"]
+        MGA["<b>merge_layers.py</b><br/>L1 + L2 + L3 · sorted by coordinate<br/>source= provenance tags"]
+        MGB["<b>extract_proteins.py</b><br/>CDS → translated proteins · gzipped FASTA"]
         MGA --> MGB
     end
 
