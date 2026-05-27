@@ -277,6 +277,7 @@ def main():
     p.add_argument("--diamond-tsv", required=True,
                    help="Pre-computed DIAMOND TSV from l3_diamond_search.py")
     p.add_argument("--schizo-keyword", required=True)
+    p.add_argument("--sample", required=True)
     p.add_argument("--threads", type=int, default=1)
     p.add_argument("--out-gff", required=True)
     p.add_argument("--min-prot-len", type=int, default=200)
@@ -386,9 +387,22 @@ def main():
 
     with open(args.out_gff, "w") as f:
         f.write("##gff-version 3\n")
-        for gene_id in kept:
+        for n, gene_id in enumerate(kept, 1):
+            new_gid = f"L3G_{args.sample}_{n:05d}"
+            new_tid = f"L3T_{args.sample}_{n:05d}"
             for parts in gene_lines[gene_id]:
-                f.write("\t".join(parts) + "\n")
+                p2 = list(parts)
+                ftype = p2[2]
+                attrs = p2[8]
+                if ftype == "gene":
+                    attrs = re.sub(r"ID=[^;]+", f"ID={new_gid}", attrs)
+                elif ftype == "mRNA":
+                    attrs = re.sub(r"ID=[^;]+", f"ID={new_tid}", attrs)
+                    attrs = re.sub(r"Parent=[^;]+", f"Parent={new_gid}", attrs)
+                else:
+                    attrs = re.sub(r"Parent=[^;]+", f"Parent={new_tid}", attrs)
+                p2[8] = attrs
+                f.write("\t".join(p2) + "\n")
 
     print(f"\nKept {len(kept)} genes", file=sys.stderr)
     print(f"Filtered breakdown:", file=sys.stderr)

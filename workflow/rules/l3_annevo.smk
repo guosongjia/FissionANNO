@@ -211,6 +211,7 @@ rule l3_uniref50_filter:
             --l2-gff {input.l2} \
             --diamond-tsv {input.diamond} \
             --schizo-keyword "{params.keyword}" \
+            --sample {wildcards.sample} \
             --threads {threads} \
             --min-prot-len {params.min_prot} \
             --min-aln-len {params.min_aln} \
