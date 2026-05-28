@@ -5,7 +5,6 @@ rule l1_lifton:
         target  = lambda w: SAMPLE_FASTA[w.sample],
         ref_fa  = config["reference"]["fasta"],
         ref_gff = config["reference"]["gff3"],
-        ref_db  = config["reference"]["gff3_db"],
         prot    = config["reference"]["protein_fa"],
         cds     = config["reference"]["cds_fa"],
     output:
@@ -17,6 +16,7 @@ rule l1_lifton:
         sc = config["lifton"]["sc"],
         s  = config["lifton"]["s"],
         a  = config["lifton"]["a"],
+        ref_db = config["reference"]["gff3_db"] or config["reference"]["gff3"],
         flags = lambda w: " ".join([
             "-copies"        if config["lifton"]["copies"] else "",
             "-polish"        if config["lifton"]["polish"] else "",
@@ -35,7 +35,7 @@ rule l1_lifton:
         ln -sf {input.ref_fa} {params.workdir}/$(basename {input.ref_fa})
         cd {params.workdir}
         lifton \
-            -g {input.ref_db} \
+            -g {params.ref_db} \
             -P {input.prot} \
             -T {input.cds} \
             -o {wildcards.sample}.lifton.gff3 \
@@ -103,6 +103,7 @@ rule l1_unmapped_per_sample:
 rule l1_score_nonhealthy:
     input:
         lifton_done = os.path.join(OUTDIR, "results", "{sample}", "L1", ".lifton_done"),
+        unmapped    = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.unmapped.tsv"),
     output:
         tsv = os.path.join(OUTDIR, "results", "{sample}", "L1", "{sample}.lifton_score_nonhealthy.tsv"),
     log:
