@@ -41,7 +41,7 @@ rule l2_conflict_resolve:
         min_aln_aa    = config["conflict"]["min_aln_aa"],
         min_identity  = config["conflict"]["min_identity"],
         orf_min_cov   = config["conflict"]["orf_min_coverage"],
-        lcon_species  = config["sog"]["lcon_species"],
+        ref_species   = config["sog"]["ref_species"],
     threads: lambda w: config["resources"]["l2_resolve"]["threads"]
     shell:
         r"""
@@ -59,7 +59,7 @@ rule l2_conflict_resolve:
             --min-aln-aa {params.min_aln_aa} \
             --min-identity {params.min_identity} \
             --orf-min-coverage {params.orf_min_cov} \
-            --lcon-species "{params.lcon_species}" \
+            --ref-species "{params.ref_species}" \
             --out-gff {output.gff} \
             --out-tsv {output.tsv} \
             --out-sidecar {output.sidecar} \

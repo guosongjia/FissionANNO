@@ -3,15 +3,15 @@
 
 # ----- input / output -----
 manifest: "config/manifest.tsv"   # sample<TAB>genome_fasta<TAB>species
-outdir: "/data/c/jiaguosong/ngs_assembly/Spombe/annotation"
+outdir: "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe"
 
 # ----- reference (L1) -----
 reference:
-  fasta:        "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.fasta"
-  gff3:         "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon_annotation.250923.gff3"
-  gff3_db:      "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon_annotation.250923.gff3_db"
-  protein_fa:   "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.250923.protein.ID.fasta"
-  cds_fa:       "/data/c/jiaguosong/ngs_assembly/Spombe/lifton_transfer/S_pombe_Lcon.250923.cds.ID.fasta"
+  fasta:        "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.fasta"
+  gff3:         "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.gff3"
+  gff3_db:      ""
+  protein_fa:   "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.protein_ID.fasta"
+  cds_fa:       "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.cds_ID.fasta"
 
 # ----- L1 lifton parameters -----
 lifton:
@@ -48,9 +48,8 @@ miniprot:
 
 # ----- ortholog (SOG) table -----
 sog:
-  path: "/data/a/jiaguosong/jiaguosong/reference_genome_panel/nine_representative_strains_related/260511_SOG_updates_and_related_analysis/1_SOG_table_update/SOG_table.260511.updated2.tsv"
-  pombe_column: "Schizosaccharomyces_pombe"
-  lcon_species: "Schizosaccharomyces_pombe"  # reference species in the SOG table
+  path: "/data/a/jiaguosong/jiaguosong/reference_genome_panel/nine_representative_strains_related/260511_SOG_updates_and_related_analysis/1_SOG_table_update/SOG_v2.2_260528.tsv"
+  ref_species: "Schizosaccharomyces_pombe"  # reference species in the SOG table
 
 # ----- L1 vs L2 conflict resolution -----
 conflict:

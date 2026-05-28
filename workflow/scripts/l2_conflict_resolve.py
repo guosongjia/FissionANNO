@@ -10,9 +10,9 @@ Architecture (v6):
        non_reference_gene / missing_lift / intra_genus_HGT_from_X /
        diverged_paralog_or_misannot
      Any intra_genus_HGT call is gated on candidate identity exceeding the
-     SOG's precomputed max Lcon × donor pairwise identity (sog_lcon_max_id).
+     SOG's precomputed max ref × donor pairwise identity (sog_ref_max_id).
      Otherwise demoted to non_reference_gene (candidate is not more similar
-     to donor than Lcon's own ortholog already is).
+     to donor than the reference ortholog already is).
   4. ORF completeness filter: mRNAs without a stop_codon, OR whose translated CDS
      is shorter than orf_min_coverage * query_protein_length, go to sidecar.
   5. GFF output has full gene/mRNA/exon/CDS structure (miniprot omits gene+exon).
@@ -333,7 +333,7 @@ def main():
     p.add_argument("--min-aln-aa", type=int, default=50)
     p.add_argument("--min-identity", type=float, default=0.3)
     p.add_argument("--hgt-min-identity", type=float, default=0.9)
-    p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
+    p.add_argument("--ref-species", default="Schizosaccharomyces_pombe",
                    help="full species name of the reference species in the SOG table")
     p.add_argument("--protein-fa", required=True,
                    help="combined 9-species protein fasta (for query lengths)")
@@ -345,7 +345,7 @@ def main():
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
 
-    ref_full = args.lcon_species
+    ref_full = args.ref_species
     ref_short = ref_full.replace("Schizosaccharomyces_", "S_")
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO),

@@ -184,7 +184,7 @@ def main():
     p.add_argument("--output", required=True, help="output pickle path")
     p.add_argument("--no-strict", action="store_true",
                    help="proceed even if rows have wrong column count (default: fail loud)")
-    p.add_argument("--lcon-species", default="Schizosaccharomyces_pombe",
+    p.add_argument("--ref-species", default="Schizosaccharomyces_pombe",
                    help="full species name of the reference species in the SOG table")
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
@@ -198,7 +198,7 @@ def main():
     if args.protein_fa:
         logging.info(f"computing reference pairwise identities from {args.protein_fa}")
         idx["sog_ref_max_id"] = compute_ref_pairwise(
-            idx["sog_to_proteins"], idx["species"], args.protein_fa, args.lcon_species)
+            idx["sog_to_proteins"], idx["species"], args.protein_fa, args.ref_species)
     else:
         idx["sog_ref_max_id"] = {}
 

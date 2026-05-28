@@ -28,7 +28,7 @@ rule l2_build_sog_index:
     output:
         idx = os.path.join(OUTDIR, "shared", "sog_index.pkl"),
     params:
-        lcon_species = config["sog"]["lcon_species"],
+        ref_species = config["sog"]["ref_species"],
     log:
         os.path.join(OUTDIR, "logs", "shared", "build_sog_index.log"),
     shell:
@@ -36,7 +36,7 @@ rule l2_build_sog_index:
         python workflow/scripts/build_sog_index.py \
             --sog {input.sog} \
             --protein-fa {input.proteins} \
-            --lcon-species "{params.lcon_species}" \
+            --ref-species "{params.ref_species}" \
             --output {output.idx} \
             2> {log}
         """
