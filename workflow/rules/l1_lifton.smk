@@ -24,9 +24,9 @@ rule l1_lifton:
             "-exclude_partial" if config["lifton"]["exclude_partial"] else "",
         ]).strip(),
         workdir = lambda w: os.path.join(OUTDIR, "results", w.sample, "L1", "_work"),
-    threads: lambda w: config["resources"]["l1_lifton"]["threads"]
+    threads: config["resources"]["l1_lifton"]["threads"]
     resources:
-        mem_gb = lambda w: config["resources"]["l1_lifton"]["mem_gb"],
+        mem_gb = config["resources"]["l1_lifton"]["mem_gb"],
     shell:
         r"""
         set -euo pipefail

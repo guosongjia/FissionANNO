@@ -63,7 +63,7 @@ rule l3_annevo_predict:
         lineage    = config["annevo"]["lineage"],
         batch_size = config["annevo"]["batch_size"],
         env_bin    = config["annevo"]["conda_env_bin"],
-    threads: lambda w: config["resources"]["l3_annevo"]["threads"]
+    threads: config["resources"]["l3_annevo"]["threads"]
     shell:
         r"""
         export PATH="{params.env_bin}:$PATH"
@@ -89,7 +89,7 @@ rule l3_annevo_decode:
     params:
         annevo_dir = config["annevo"]["workflow_dir"],
         env_bin    = config["annevo"]["conda_env_bin"],
-    threads: lambda w: config["resources"]["l3_annevo"]["threads"]
+    threads: config["resources"]["l3_annevo"]["threads"]
     shell:
         r"""
         export PATH="{params.env_bin}:$PATH"
@@ -132,9 +132,9 @@ rule l3_diamond:
         db     = config["uniref50"]["diamond_db"],
         evalue = config["uniref50"]["evalue"],
         min_prot = config["annevo"]["min_prot_len"],
-    threads: lambda w: config["resources"]["l3_uniref50"]["threads"]
+    threads: config["resources"]["l3_uniref50"]["threads"]
     resources:
-        mem_gb = lambda w: config["resources"]["l3_uniref50"]["mem_gb"],
+        mem_gb = config["resources"]["l3_uniref50"]["mem_gb"],
     shell:
         r"""
         python workflow/scripts/l3_diamond_search.py \

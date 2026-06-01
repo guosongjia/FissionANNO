@@ -9,7 +9,7 @@ rule merge_per_strain:
         gff = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "merge.log"),
-    threads: lambda w: config["resources"]["merge"]["threads"]
+    threads: config["resources"]["merge"]["threads"]
     shell:
         r"""
         mkdir -p $(dirname {output.gff})

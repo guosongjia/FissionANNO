@@ -8,9 +8,9 @@ rule l2_miniprot:
         gff = temp(os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.miniprot.gff3")),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l2_miniprot.log"),
-    threads: lambda w: config["resources"]["l2_miniprot"]["threads"]
+    threads: config["resources"]["l2_miniprot"]["threads"]
     resources:
-        mem_gb = lambda w: config["resources"]["l2_miniprot"]["mem_gb"],
+        mem_gb = config["resources"]["l2_miniprot"]["mem_gb"],
     params:
         extra = config["miniprot"]["extra_opts"],
     shell:
@@ -43,7 +43,7 @@ rule l2_conflict_resolve:
         min_identity  = config["conflict"]["min_identity"],
         orf_min_cov   = config["conflict"]["orf_min_coverage"],
         ref_species   = config["sog"]["ref_species"],
-    threads: lambda w: config["resources"]["l2_resolve"]["threads"]
+    threads: config["resources"]["l2_resolve"]["threads"]
     shell:
         r"""
         mkdir -p $(dirname {output.sidecar})

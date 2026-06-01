@@ -1,8 +1,9 @@
 # Snakemake local single-machine profile
-cores: 64
-jobs: 64
+# NOTE: cores must be passed via CLI (--cores 48) — Snakemake 9.21 does not
+# read the cores key from profile config reliably; setting it here causes the
+# scheduler to ignore per-rule threads and saturate the box.
 keep-going: true
-rerun-incomplete: true
+rerun-incomplete: false
 printshellcmds: true
 use-conda: false           # set true once envs are tested
 restart-times: 1
