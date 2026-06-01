@@ -107,7 +107,7 @@ rule l3_remap:
         gff    = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_raw.gff"),
         maptsv = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.residuals.map.tsv"),
     output:
-        gff = temp(os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_remapped.gff3")),
+        gff = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_remapped.gff3"),
     log:
         os.path.join(OUTDIR, "logs", "{sample}", "l3_remap.log"),
     threads: 1
@@ -198,6 +198,7 @@ rule l3_uniref50_filter:
         min_aln     = config["annevo"]["min_aln_len"],
         bam_dir     = config["annevo"]["bam_dir"],
         cov_floor   = config["annevo"]["coverage_floor"],
+        schpo_cov   = config["annevo"]["schpo_min_target_cov"],
     threads: 1
     shell:
         r"""
@@ -217,6 +218,7 @@ rule l3_uniref50_filter:
             --threads {threads} \
             --min-prot-len {params.min_prot} \
             --min-aln-len {params.min_aln} \
+            --schpo-min-target-cov {params.schpo_cov} \
             $BAM_ARG \
             --out-gff {output.kept_gff} \
             > {log} 2>&1

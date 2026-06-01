@@ -98,23 +98,33 @@ def run_diamond(proteins, diamond_db, evalue, threads, out_tsv):
 
 
 def parse_diamond_hits(tsv_path, min_aln_len=80):
-    """Parse DIAMOND output, return top hit per gene (filtered by min alignment length)."""
+    """Parse DIAMOND output, return top hit per gene (filtered by min alignment length).
+
+    Expected columns: qseqid sseqid pident length evalue bitscore stitle qlen slen
+    qlen/slen are optional for backward compatibility with older runs.
+    """
     top_hits = {}
     with open(tsv_path) as f:
         for line in f:
             parts = line.rstrip("\n").split("\t")
+            if len(parts) < 7:
+                continue
             qseqid = parts[0]
             aln_len = int(parts[3])
             if aln_len < min_aln_len:
                 continue
             if qseqid not in top_hits:
+                qlen = int(parts[7]) if len(parts) > 7 and parts[7].isdigit() else 0
+                slen = int(parts[8]) if len(parts) > 8 and parts[8].isdigit() else 0
                 top_hits[qseqid] = {
                     "sseqid": parts[1],
                     "pident": parts[2],
                     "length": parts[3],
                     "evalue": parts[4],
                     "bitscore": parts[5],
-                    "stitle": parts[6] if len(parts) > 6 else "",
+                    "stitle": parts[6],
+                    "qlen": qlen,
+                    "slen": slen,
                 }
     return top_hits
 
@@ -284,6 +294,11 @@ def main():
     p.add_argument("--min-aln-len", type=int, default=200)
     p.add_argument("--bam", default=None)
     p.add_argument("--coverage-floor", type=float, default=0.2)
+    p.add_argument("--schpo-min-target-cov", type=float, default=0.8,
+                   help="When top hit is Schizosaccharomyces, require alignment to "
+                        "cover this fraction of the target protein. Below: route to "
+                        "sidecar as a likely reference fragment, not a real "
+                        "non-reference gene.")
     args = p.parse_args()
 
     gene_lines, gene_order = parse_braker_gff(args.braker_gff)
@@ -329,7 +344,7 @@ def main():
     assembly_median_cov = None  # lazily computed when needed
 
     kept = []
-    counts = {"no_hit": 0, "schpo": 0, "te": 0,
+    counts = {"no_hit": 0, "schpo_fragment": 0, "schpo_kept_nonref": 0, "te": 0,
               "metazoa_no_schizo_neighbor": 0, "metazoa_low_coverage": 0,
               "kept_schizo_neighbor_hgt": 0, "kept_other_hgt": 0}
 
@@ -339,7 +354,19 @@ def main():
             counts["no_hit"] += 1
             continue
         if is_schpo_hit(hit):
-            counts["schpo"] += 1
+            slen = hit.get("slen", 0)
+            aln_len = int(hit["length"])
+            target_cov = (aln_len / slen) if slen else 0.0
+            if target_cov < args.schpo_min_target_cov:
+                counts["schpo_fragment"] += 1
+                print(f"  drop {gene_id}: SCHPO hit covers only {target_cov:.1%} "
+                      f"of target ({aln_len}/{slen}) — likely reference fragment",
+                      file=sys.stderr)
+                continue
+            taxon = extract_taxon(hit["stitle"])
+            add_provenance(gene_lines[gene_id], hit, taxon, "non_reference_gene")
+            counts["schpo_kept_nonref"] += 1
+            kept.append(gene_id)
             continue
         if is_te_hit(hit):
             counts["te"] += 1

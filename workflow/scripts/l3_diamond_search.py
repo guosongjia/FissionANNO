@@ -95,7 +95,7 @@ def main():
         "--query", query_fa,
         "--out", args.out_diamond,
         "--outfmt", "6", "qseqid", "sseqid", "pident", "length",
-        "evalue", "bitscore", "stitle",
+        "evalue", "bitscore", "stitle", "qlen", "slen",
         "--evalue", str(args.evalue),
         "--threads", str(args.threads),
         "--max-target-seqs", "5",

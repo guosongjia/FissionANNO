@@ -9,7 +9,7 @@ outdir: "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe"
 reference:
   fasta:        "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.fasta"
   gff3:         "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.gff3"
-  gff3_db:      ""
+  gff3_db:      "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.gff3_db"
   protein_fa:   "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.protein_ID.fasta"
   cds_fa:       "/data/c/jiaguosong/ngs_assembly/Spombe/annotation_Spombe/reference_genome/S_pombe.cds_ID.fasta"
 
@@ -73,6 +73,7 @@ annevo:
   min_aln_len: 200
   bam_dir: "/hugedata/jiaguosong/data_c_jiaguosong_backup/ngs_assembly/Spombe/10_select_final_assembly/KAT_mapping_bam"
   coverage_floor: 0.2
+  schpo_min_target_cov: 0.8     # SCHPO top hit must cover ≥ this fraction of target protein
 
 # ----- L3 UniRef50 filter -----
 uniref50:
