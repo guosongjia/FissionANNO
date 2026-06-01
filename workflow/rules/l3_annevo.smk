@@ -155,6 +155,7 @@ rule l3_rescue_l2:
         annevo_gff  = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.annevo_remapped.gff3"),
         diamond_tsv = os.path.join(OUTDIR, "results", "{sample}", "L3", "{sample}.uniref50.tsv"),
         l2_kept_in  = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept.gff3"),
+        genome      = lambda w: SAMPLE_FASTA[w.sample],
     output:
         l2_kept_out = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept_rescued.gff3"),
         sidecar_out = os.path.join(OUTDIR, "results", "{sample}", "sidecar", "{sample}.sidecar_updated.tsv"),
@@ -172,6 +173,7 @@ rule l3_rescue_l2:
             --annevo-gff {input.annevo_gff} \
             --diamond-tsv {input.diamond_tsv} \
             --l2-kept-in {input.l2_kept_in} \
+            --genome-fa {input.genome} \
             --l2-kept-out {output.l2_kept_out} \
             --sidecar-out {output.sidecar_out} \
             --rescue-log {output.rescue_log} \

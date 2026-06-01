@@ -26,6 +26,79 @@ import sys
 from collections import defaultdict
 
 
+_CODON_TABLE = {
+    'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
+    'CTT': 'L', 'CTC': 'L', 'CTA': 'L', 'CTG': 'L',
+    'ATT': 'I', 'ATC': 'I', 'ATA': 'I', 'ATG': 'M',
+    'GTT': 'V', 'GTC': 'V', 'GTA': 'V', 'GTG': 'V',
+    'TCT': 'S', 'TCC': 'S', 'TCA': 'S', 'TCG': 'S',
+    'CCT': 'P', 'CCC': 'P', 'CCA': 'P', 'CCG': 'P',
+    'ACT': 'T', 'ACC': 'T', 'ACA': 'T', 'ACG': 'T',
+    'GCT': 'A', 'GCC': 'A', 'GCA': 'A', 'GCG': 'A',
+    'TAT': 'Y', 'TAC': 'Y', 'TAA': '*', 'TAG': '*',
+    'CAT': 'H', 'CAC': 'H', 'CAA': 'Q', 'CAG': 'Q',
+    'AAT': 'N', 'AAC': 'N', 'AAA': 'K', 'AAG': 'K',
+    'GAT': 'D', 'GAC': 'D', 'GAA': 'E', 'GAG': 'E',
+    'TGT': 'C', 'TGC': 'C', 'TGA': '*', 'TGG': 'W',
+    'CGT': 'R', 'CGC': 'R', 'CGA': 'R', 'CGG': 'R',
+    'AGT': 'S', 'AGC': 'S', 'AGA': 'R', 'AGG': 'R',
+    'GGT': 'G', 'GGC': 'G', 'GGA': 'G', 'GGG': 'G',
+}
+_COMP = str.maketrans('ACGTacgt', 'TGCAtgca')
+
+
+def _revcomp(seq):
+    return seq.translate(_COMP)[::-1]
+
+
+def load_genome(fa_path):
+    genome = {}
+    cur_id = None
+    chunks = []
+    with open(fa_path) as fh:
+        for line in fh:
+            if line.startswith(">"):
+                if cur_id is not None:
+                    genome[cur_id] = "".join(chunks)
+                cur_id = line[1:].split()[0]
+                chunks = []
+            else:
+                chunks.append(line.strip())
+    if cur_id is not None:
+        genome[cur_id] = "".join(chunks)
+    return genome
+
+
+def translate_cds_lines(cds_parts_list, strand, genome):
+    """cds_parts_list: list of split-line lists (output of parse_miniprot_loci).
+    Returns translated protein string (may contain '*' for internal stops)."""
+    if not cds_parts_list:
+        return ""
+    seqid = cds_parts_list[0][0]
+    contig_seq = genome.get(seqid, "")
+    parts = []
+    for cols in cds_parts_list:
+        parts.append((int(cols[3]), int(cols[4]), cols[7]))
+    if strand == "+":
+        parts.sort(key=lambda x: x[0])
+    else:
+        parts.sort(key=lambda x: x[0], reverse=True)
+    nuc = ""
+    for i, (s, e, phase) in enumerate(parts):
+        seg = contig_seq[s - 1:e]
+        if strand == "-":
+            seg = _revcomp(seg)
+        if i == 0:
+            ph = int(phase) if phase.isdigit() else 0
+            seg = seg[ph:]
+        nuc += seg
+    protein = []
+    for i in range(0, len(nuc) - 2, 3):
+        codon = nuc[i:i + 3].upper()
+        protein.append(_CODON_TABLE.get(codon, 'X'))
+    return "".join(protein)
+
+
 def parse_locus_string(locus_str):
     """Parse 'seqid:start-end(strand)' → (seqid, start, end, strand)."""
     m = re.match(r"^(.+):(\d+)-(\d+)\(([+-])\)$", locus_str)
@@ -133,6 +206,8 @@ def main():
     p.add_argument("--l2-kept-out", required=True)
     p.add_argument("--sidecar-out", required=True)
     p.add_argument("--rescue-log", required=True)
+    p.add_argument("--genome-fa", required=True,
+                   help="sample genome FASTA (for CDS translation / internal stop check)")
     p.add_argument("--min-aln-len", type=int, default=200)
     p.add_argument("--min-overlap", type=float, default=0.5)
     p.add_argument("--min-miniprot-identity", type=float, default=0.9)
@@ -142,6 +217,7 @@ def main():
     annevo_genes = parse_gff_genes(args.annevo_gff)
     diamond_hit_qids = parse_diamond_hits(args.diamond_tsv, args.min_aln_len)
     miniprot_loci = parse_miniprot_loci(args.miniprot_gff)
+    genome = load_genome(args.genome_fa)
 
     # Index ANNEVO by seqid (strand-agnostic for overlap test)
     annevo_by_seq = defaultdict(list)
@@ -155,6 +231,7 @@ def main():
 
     rescued_loci = []
     kept_sidecar = []
+    n_skipped_internal_stop = 0
     next_gid_num = 100000  # IDs for rescued genes
 
     for row in sidecar_rows:
@@ -190,6 +267,15 @@ def main():
                     if best_m is None or m["identity"] > best_m["identity"]:
                         best_m = m
             if best_m is None or best_m["identity"] < args.min_miniprot_identity:
+                continue
+
+            # Internal-stop guard: translate CDS from genome and skip if
+            # protein body contains '*'. miniprot tolerates internal stops in
+            # frameshift alignments, so the GFF stop_codon row is not enough.
+            cds_only = [c for c in best_m["lines"] if c[2] == "CDS"]
+            protein = translate_cds_lines(cds_only, best_m["strand"], genome)
+            if "*" in protein[:-1]:
+                n_skipped_internal_stop += 1
                 continue
 
             next_gid_num += 1
@@ -256,7 +342,8 @@ def main():
             f.write(f"{r['locus_str']}\t{r['src_protein']}\t{r['identity']:.4f}\t"
                     f"{r['annevo_gid']}\t{r['new_gid']}\n")
 
-    print(f"Rescued {len(rescued_loci)} singleton_no_sog loci as non_reference_gene",
+    print(f"Rescued {len(rescued_loci)} singleton_no_sog loci as non_reference_gene"
+          f" (skipped {n_skipped_internal_stop} with internal stop codons)",
           file=sys.stderr)
 
 

@@ -52,10 +52,7 @@ def parse_gff(path):
 
 def extract_protein(cds_records, genome):
     strand = cds_records[0][3]
-    if strand == "+":
-        cds_sorted = sorted(cds_records, key=lambda x: x[1])
-    else:
-        cds_sorted = sorted(cds_records, key=lambda x: -x[1])
+    cds_sorted = sorted(cds_records, key=lambda x: x[1])
 
     seq_parts = []
     for seqid, start, end, _, _ in cds_sorted:
@@ -67,7 +64,9 @@ def extract_protein(cds_records, genome):
     if strand == "-":
         cds_seq = str(Seq(cds_seq).reverse_complement())
 
-    first_phase = cds_sorted[0][4]
+    # Phase from first CDS in mRNA order (lowest coord for +, highest for -)
+    first_in_mrna = cds_sorted[0] if strand == "+" else cds_sorted[-1]
+    first_phase = first_in_mrna[4]
     cds_seq = cds_seq[first_phase:]
 
     trim = len(cds_seq) % 3

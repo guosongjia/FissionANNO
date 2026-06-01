@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """L2 conflict resolution: classify miniprot hits not overlapping L1 genes.
 
-Architecture (v6):
+Architecture (v7):
   1. Pre-filter mRNAs by alignment length and identity.
   2. Drop any mRNA that overlaps an L1 gene (≥ overlap_min fraction of L covered).
      L1 lifton already handles these loci; miniprot adds nothing reliable here.
@@ -13,8 +13,11 @@ Architecture (v6):
      SOG's precomputed max ref × donor pairwise identity (sog_ref_max_id).
      Otherwise demoted to non_reference_gene (candidate is not more similar
      to donor than the reference ortholog already is).
-  4. ORF completeness filter: mRNAs without a stop_codon, OR whose translated CDS
-     is shorter than orf_min_coverage * query_protein_length, go to sidecar.
+  4. ORF completeness filter (4 sub-checks, any failure -> sidecar):
+       a. GFF must contain a stop_codon row (miniprot terminal stop).
+       b. Translate CDS from the genome; reject if internal '*' present.
+       c. Reject if translated protein does not end in '*'.
+       d. Translated CDS aa length >= orf_min_coverage * query_protein_length.
   5. GFF output has full gene/mRNA/exon/CDS structure (miniprot omits gene+exon).
 """
 import argparse
@@ -321,6 +324,83 @@ def load_protein_lengths(fa_path: str) -> Dict[str, int]:
     return lengths
 
 
+_CODON_TABLE = {
+    'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
+    'CTT': 'L', 'CTC': 'L', 'CTA': 'L', 'CTG': 'L',
+    'ATT': 'I', 'ATC': 'I', 'ATA': 'I', 'ATG': 'M',
+    'GTT': 'V', 'GTC': 'V', 'GTA': 'V', 'GTG': 'V',
+    'TCT': 'S', 'TCC': 'S', 'TCA': 'S', 'TCG': 'S',
+    'CCT': 'P', 'CCC': 'P', 'CCA': 'P', 'CCG': 'P',
+    'ACT': 'T', 'ACC': 'T', 'ACA': 'T', 'ACG': 'T',
+    'GCT': 'A', 'GCC': 'A', 'GCA': 'A', 'GCG': 'A',
+    'TAT': 'Y', 'TAC': 'Y', 'TAA': '*', 'TAG': '*',
+    'CAT': 'H', 'CAC': 'H', 'CAA': 'Q', 'CAG': 'Q',
+    'AAT': 'N', 'AAC': 'N', 'AAA': 'K', 'AAG': 'K',
+    'GAT': 'D', 'GAC': 'D', 'GAA': 'E', 'GAG': 'E',
+    'TGT': 'C', 'TGC': 'C', 'TGA': '*', 'TGG': 'W',
+    'CGT': 'R', 'CGC': 'R', 'CGA': 'R', 'CGG': 'R',
+    'AGT': 'S', 'AGC': 'S', 'AGA': 'R', 'AGG': 'R',
+    'GGT': 'G', 'GGC': 'G', 'GGA': 'G', 'GGG': 'G',
+}
+_COMP = str.maketrans('ACGTacgt', 'TGCAtgca')
+
+
+def _revcomp(seq: str) -> str:
+    return seq.translate(_COMP)[::-1]
+
+
+def load_genome(fa_path: str) -> Dict[str, str]:
+    genome: Dict[str, str] = {}
+    cur_id = None
+    chunks: List[str] = []
+    with open(fa_path) as fh:
+        for line in fh:
+            if line.startswith(">"):
+                if cur_id is not None:
+                    genome[cur_id] = "".join(chunks)
+                cur_id = line[1:].split()[0]
+                chunks = []
+            else:
+                chunks.append(line.strip())
+    if cur_id is not None:
+        genome[cur_id] = "".join(chunks)
+    return genome
+
+
+def translate_cds(m: Dict, genome: Dict[str, str]) -> Optional[str]:
+    """Extract CDS from genome and translate. Returns protein string or None if contig missing."""
+    seqid = m["seqid"]
+    if seqid not in genome:
+        return None
+    contig_seq = genome[seqid]
+    cds_parts = []
+    for cl in m["child_lines"]:
+        cols = cl.split("\t")
+        if len(cols) >= 8 and cols[2] == "CDS":
+            cds_parts.append((int(cols[3]), int(cols[4]), cols[7]))
+    if not cds_parts:
+        return None
+    strand = m["strand"]
+    if strand == "+":
+        cds_parts.sort(key=lambda x: x[0])
+    else:
+        cds_parts.sort(key=lambda x: x[0], reverse=True)
+    nuc = ""
+    for i, (s, e, phase) in enumerate(cds_parts):
+        seg = contig_seq[s - 1:e]
+        if strand == "-":
+            seg = _revcomp(seg)
+        if i == 0:
+            ph = int(phase) if phase.isdigit() else 0
+            seg = seg[ph:]
+        nuc += seg
+    protein = []
+    for i in range(0, len(nuc) - 2, 3):
+        codon = nuc[i:i+3].upper()
+        protein.append(_CODON_TABLE.get(codon, 'X'))
+    return "".join(protein)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--sample", required=True)
@@ -337,6 +417,8 @@ def main():
                    help="full species name of the reference species in the SOG table")
     p.add_argument("--protein-fa", required=True,
                    help="combined 9-species protein fasta (for query lengths)")
+    p.add_argument("--genome-fa", required=True,
+                   help="sample genome FASTA (for CDS translation / internal stop check)")
     p.add_argument("--orf-min-coverage", type=float, default=0.95,
                    help="translated CDS aa / query protein aa lower bound")
     p.add_argument("--out-gff", required=True)
@@ -374,6 +456,10 @@ def main():
     logging.info(f"reading protein lengths {args.protein_fa}")
     protein_lengths = load_protein_lengths(args.protein_fa)
     logging.info(f"  {len(protein_lengths)} protein lengths loaded")
+
+    logging.info(f"reading genome {args.genome_fa}")
+    genome = load_genome(args.genome_fa)
+    logging.info(f"  {len(genome)} contigs loaded")
 
     counters: Dict[str, int] = defaultdict(int)
 
@@ -480,6 +566,17 @@ def main():
                 f"relation={relation}",
             ])
             continue
+        protein = translate_cds(m, genome)
+        if protein and "*" in protein[:-1]:
+            counters["orf_internal_stop_to_sidecar"] += 1
+            n_internal = protein[:-1].count("*")
+            sidecar_rows.append([
+                args.sample, locus_coord,
+                m["src_species"], m["src_protein"],
+                f"{m['identity']:.4f}", "internal_stop",
+                f"relation={relation};n_internal_stops={n_internal}",
+            ])
+            continue
         aa_len = cds_aa_length(m)
         q_id = f"{m['src_species']}|{m['src_protein']}"
         q_len = protein_lengths.get(q_id, 0)
@@ -501,6 +598,7 @@ def main():
     logging.info(f"  ORF filter: {counters['orf_complete_kept']} kept, "
                  f"{counters.get('orf_partial_no_stop_to_sidecar', 0)} partial_no_stop, "
                  f"{counters.get('orf_full_aln_no_stop_to_sidecar', 0)} full_aln_no_stop, "
+                 f"{counters.get('orf_internal_stop_to_sidecar', 0)} internal_stop, "
                  f"{counters.get('orf_too_short_to_sidecar', 0)} too_short")
 
     # --- Write outputs ---

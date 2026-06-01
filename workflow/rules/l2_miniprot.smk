@@ -27,6 +27,7 @@ rule l2_conflict_resolve:
         l2_gff   = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.miniprot.gff3"),
         sog_idx  = os.path.join(OUTDIR, "shared", "sog_index.pkl"),
         proteins = os.path.join(OUTDIR, "shared", "combined_9sp.protein.fa"),
+        genome   = lambda w: SAMPLE_FASTA[w.sample],
     output:
         gff      = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_kept.gff3"),
         tsv      = os.path.join(OUTDIR, "results", "{sample}", "L2", "{sample}.l2_candidates.tsv"),
@@ -52,6 +53,7 @@ rule l2_conflict_resolve:
             --l2-gff {input.l2_gff} \
             --sog-index {input.sog_idx} \
             --protein-fa {input.proteins} \
+            --genome-fa {input.genome} \
             --overlap-min {params.overlap_min} \
             --hgt-min-identity {params.hgt_min_id} \
             --diverged-max-id {params.diverged_max} \
