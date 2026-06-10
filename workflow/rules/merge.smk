@@ -40,3 +40,23 @@ rule merge_extract_proteins:
             --output {output.fa} \
             > {log} 2>&1
         """
+
+rule merge_extract_cds:
+    input:
+        gff    = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.final.gff3"),
+        genome = lambda w: SAMPLE_FASTA[w.sample],
+    output:
+        fa = os.path.join(OUTDIR, "results", "{sample}", "merged", "{sample}.cds.fa.gz"),
+    log:
+        os.path.join(OUTDIR, "logs", "{sample}", "merge_extract_cds.log"),
+    threads: 1
+    shell:
+        r"""
+        python workflow/scripts/extract_proteins.py \
+            --gff {input.gff} \
+            --genome {input.genome} \
+            --sample {wildcards.sample} \
+            --mode cds \
+            --output {output.fa} \
+            > {log} 2>&1
+        """

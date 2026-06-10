@@ -1,8 +1,12 @@
 #!/usr/bin/env python
-"""Extract translated protein sequences from merged GFF3 + genome FASTA.
+"""Extract protein or CDS nucleotide sequences from merged GFF3 + genome FASTA.
 
 Output: gzipped FASTA, one record per mRNA.
 Header: >{mrna_id} gene={gene_id} [provenance tags]
+
+Modes:
+  protein (default) — translated amino-acid sequence (to first stop)
+  cds               — spliced coding nucleotide sequence (ATG to stop, no intron)
 """
 import argparse
 import gzip
@@ -50,7 +54,8 @@ def parse_gff(path):
     return gene_attrs, mrna_parent, mrna_attrs, cds_list
 
 
-def extract_protein(cds_records, genome):
+def extract_cds_seq(cds_records, genome):
+    """Return spliced CDS nucleotide sequence (phase-trimmed, codon-aligned)."""
     strand = cds_records[0][3]
     cds_sorted = sorted(cds_records, key=lambda x: x[1])
 
@@ -64,7 +69,6 @@ def extract_protein(cds_records, genome):
     if strand == "-":
         cds_seq = str(Seq(cds_seq).reverse_complement())
 
-    # Phase from first CDS in mRNA order (lowest coord for +, highest for -)
     first_in_mrna = cds_sorted[0] if strand == "+" else cds_sorted[-1]
     first_phase = first_in_mrna[4]
     cds_seq = cds_seq[first_phase:]
@@ -76,6 +80,13 @@ def extract_protein(cds_records, genome):
     if not cds_seq:
         return None
 
+    return cds_seq
+
+
+def extract_protein(cds_records, genome):
+    cds_seq = extract_cds_seq(cds_records, genome)
+    if not cds_seq:
+        return None
     return str(Seq(cds_seq).translate(to_stop=True))
 
 
@@ -94,27 +105,37 @@ def main():
     p.add_argument("--genome", required=True)
     p.add_argument("--sample", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--mode", choices=["protein", "cds"], default="protein",
+                   help="protein = translated aa; cds = spliced nucleotide coding sequence")
     args = p.parse_args()
 
     genome = {r.id: str(r.seq) for r in SeqIO.parse(args.genome, "fasta")}
     gene_attrs, mrna_parent, mrna_attrs, cds_list = parse_gff(args.gff)
 
-    written = skipped = 0
+    extract_fn = extract_protein if args.mode == "protein" else extract_cds_seq
+    label = "proteins" if args.mode == "protein" else "CDS sequences"
+
+    written = skipped = filtered = 0
     with gzip.open(args.output, "wt") as out:
         for mrna_id, cds_records in cds_list.items():
-            prot = extract_protein(cds_records, genome)
-            if not prot:
+            ma = mrna_attrs.get(mrna_id, {})
+            if ma.get("valid_orf", "").lower() == "false":
+                filtered += 1
+                continue
+            seq = extract_fn(cds_records, genome)
+            if not seq:
                 skipped += 1
                 continue
             gene_id = mrna_parent.get(mrna_id, "")
-            prov = provenance_str(mrna_attrs.get(mrna_id, {}), gene_attrs.get(gene_id, {}))
+            prov = provenance_str(ma, gene_attrs.get(gene_id, {}))
             header = f">{mrna_id} gene={gene_id}"
             if prov:
                 header += f" {prov}"
-            out.write(f"{header}\n{prot}\n")
+            out.write(f"{header}\n{seq}\n")
             written += 1
 
-    print(f"{args.sample}: {written} proteins written, {skipped} skipped", file=sys.stderr)
+    print(f"{args.sample}: {written} {label} written, {skipped} skipped, "
+          f"{filtered} filtered (valid_orf=False)", file=sys.stderr)
 
 
 if __name__ == "__main__":
